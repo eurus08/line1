@@ -42,7 +42,7 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(CompilerFlags)   # sets -O3, -march=native, -Wall, etc.
-include(DetectArch)      # sets USE_AVX2 or USE_NEON define
+include(DetectArch)      # sets USE_AVX2 or USE_NEON define.
 
 # ------------------------------------------------------------------ #
 #  4. Precision option                                                 #
