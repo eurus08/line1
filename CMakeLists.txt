@@ -18,6 +18,14 @@ project(blas1
     LANGUAGES   C
 )
 
+
+# ------------------------------------------------------------------ #
+#  0. Let CMake tell vscode where /include is                       #
+# ------------------------------------------------------------------ #
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+
 # ------------------------------------------------------------------ #
 #  1. C standard                                                       #
 #     C11 gives us: _Generic, static_assert, aligned_alloc            #
@@ -121,3 +129,4 @@ message(STATUS "  C compiler : ${CMAKE_C_COMPILER}")
 message(STATUS "  C standard : C${CMAKE_C_STANDARD}")
 message(STATUS "  Install to : ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "-------------------------------")
+
