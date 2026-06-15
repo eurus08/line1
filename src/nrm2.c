@@ -40,27 +40,41 @@
  * underflow is also impossible.
  *
  * Two-pass structure:
- *   Pass 1: find scale = max( |x[i]| )
+ *   Pass 1: find scale = max( |x[i]| ) — delegated to blas_iamax()
  *   Pass 2: accumulate sum of ( x[i] / scale )^2, with Kahan compensation
  *   Result: scale * sqrt(sum)
+ *
+ * Reuse of blas_iamax:
+ *   Pass 1 is exactly the operation iamax performs — find the element with
+ *   the largest absolute value. Rather than duplicating that loop here,
+ *   we call blas_iamax() directly. This keeps the two implementations in
+ *   sync: any future improvement to iamax (e.g. an AVX2 kernel in Phase 5)
+ *   is automatically inherited by nrm2.
+ *
+ *   blas_iamax returns a 1-based index k. To recover the scale value:
+ *       scale = fabs( x[(k - 1) * incx] )
+ *   The (k-1) converts back to 0-based; multiplying by incx gives the
+ *   correct memory offset for strided arrays.
  *
  * Edge cases handled:
  *   - n <= 0         : return 0.0
  *   - all zeros      : scale == 0.0, return 0.0 (guarded before divide)
- *   - single element : returns |x[0]| exactly
+ *   - single element : blas_iamax returns 1, scale = |x[0]|, sum = 1.0,
+ *                      result = scale * sqrt(1.0) = |x[0]| — exact.
  *
  * Kahan summation in pass 2:
- *   The scaled terms are all <= 1.0 in magnitude, so overflow is gone.
- *   But we still accumulate n terms, and rounding error grows with n.
- *   Kahan summation keeps the error at O(eps) regardless of n.
- *   Same -ffast-math caveat as dot.c applies here — build with
- *   -DBLAS1_STRICT_IEEE=ON if you need the compensation to survive.
+ *   The scaled terms are all in [0, 1], so overflow is gone. But we still
+ *   accumulate n terms and rounding error grows with n. Kahan keeps it at
+ *   O(eps) regardless of n. Same -ffast-math caveat as dot.c applies —
+ *   build with -DBLAS1_STRICT_IEEE=ON if the compensation must survive.
  *
  * Stride support:
- *   Both passes respect incx. Unit-stride fast path for each pass.
+ *   blas_iamax handles pass 1 with full stride support. Pass 2 mirrors
+ *   the same unit-stride / strided split used throughout the library.
  */
 
 #include "blas1/nrm2.h"
+#include "blas1/iamax.h"
 #include "blas1/types.h"
 #include <math.h>   /* fabs(), sqrt() */
 
@@ -72,34 +86,16 @@ BLAS_REAL blas_nrm2(blas_int n,
         return (BLAS_REAL)0.0;
     }
 
-    /* Single element: norm is just the absolute value */
-    if (n == 1) {
-        return fabs(x[0]);
-    }
-
     /* ------------------------------------------------------------------
-     * Pass 1 — find the scaling factor
+     * Pass 1 — find the scaling factor via blas_iamax
      *
-     * scale = max( |x[i]| ) over all i.
-     * We use this to normalise every element before squaring.
+     * blas_iamax returns the 1-based index of max(|x[i]|).
+     * We convert it back to a memory offset to read the actual value.
      * ------------------------------------------------------------------ */
-    BLAS_REAL scale = (BLAS_REAL)0.0;
+    blas_int  k     = blas_iamax(n, x, incx);
+    BLAS_REAL scale = fabs(x[(k - 1) * incx]);
 
-    if (incx == 1) {
-        for (blas_int i = 0; i < n; i++) {
-            BLAS_REAL ax = fabs(x[i]);
-            if (ax > scale) scale = ax;
-        }
-    } else {
-        blas_int ix = 0;
-        for (blas_int i = 0; i < n; i++) {
-            BLAS_REAL ax = fabs(x[ix]);
-            if (ax > scale) scale = ax;
-            ix += incx;
-        }
-    }
-
-    /* Guard: all-zero vector */
+    /* Guard: all-zero vector (scale == 0 means every element is zero) */
     if (BLAS_UNLIKELY(scale == (BLAS_REAL)0.0)) {
         return (BLAS_REAL)0.0;
     }
@@ -107,8 +103,8 @@ BLAS_REAL blas_nrm2(blas_int n,
     /* ------------------------------------------------------------------
      * Pass 2 — accumulate scaled squares with Kahan compensation
      *
-     * Each term is (x[i] / scale)^2, which is in [0, 1].
-     * Squaring values in [0,1] cannot overflow or underflow.
+     * Each term is (x[i] / scale)^2, which lies in [0, 1].
+     * Squaring values in [0, 1] cannot overflow or underflow.
      * Kahan compensation keeps rounding error bounded at O(eps).
      * ------------------------------------------------------------------ */
     BLAS_REAL sum = (BLAS_REAL)0.0;
@@ -116,7 +112,8 @@ BLAS_REAL blas_nrm2(blas_int n,
 
     if (incx == 1) {
         for (blas_int i = 0; i < n; i++) {
-            BLAS_REAL t       = (x[i] / scale) * (x[i] / scale) - c;
+            BLAS_REAL si      = x[i] / scale;
+            BLAS_REAL t       = si * si - c;
             BLAS_REAL new_sum = sum + t;
             c   = (new_sum - sum) - t;
             sum = new_sum;
@@ -124,7 +121,8 @@ BLAS_REAL blas_nrm2(blas_int n,
     } else {
         blas_int ix = 0;
         for (blas_int i = 0; i < n; i++) {
-            BLAS_REAL t       = (x[ix] / scale) * (x[ix] / scale) - c;
+            BLAS_REAL si      = x[ix] / scale;
+            BLAS_REAL t       = si * si - c;
             BLAS_REAL new_sum = sum + t;
             c   = (new_sum - sum) - t;
             sum = new_sum;
