@@ -14,7 +14,10 @@
 #ifndef BLAS1_ASUM_H
 #define BLAS1_ASUM_H
 
-#include "types.h"
+#include "blas1/types.h"
+
+#include "blas1/types.h"
+
 
 BLAS_REAL blas_asum(
     blas_int            n,

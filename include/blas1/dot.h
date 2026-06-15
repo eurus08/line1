@@ -16,9 +16,20 @@
 #ifndef BLAS1_DOT_H
 #define BLAS1_DOT_H
 
-#include "types.h"
+#include "blas1/types.h"
+
+#include "blas1/types.h"
+
 
 BLAS_REAL blas_dot(
+    blas_int            n,
+    const BLAS_REAL   * BLAS_RESTRICT x,
+    blas_int            incx,
+    const BLAS_REAL   * BLAS_RESTRICT y,
+    blas_int            incy
+);
+
+BLAS_REAL blas_dot_kahan(
     blas_int            n,
     const BLAS_REAL   * BLAS_RESTRICT x,
     blas_int            incx,

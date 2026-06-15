@@ -17,7 +17,8 @@
 #ifndef BLAS1_NRM2_H
 #define BLAS1_NRM2_H
 
-#include "types.h"
+#include "blas1/types.h"
+
 
 BLAS_REAL blas_nrm2(
     blas_int            n,

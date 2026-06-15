@@ -17,7 +17,10 @@
 #ifndef BLAS1_AXPY_H
 #define BLAS1_AXPY_H
 
-#include "types.h"
+#include "blas1/types.h"
+
+#include "blas1/types.h"
+
 
 void blas_axpy(
     blas_int            n,

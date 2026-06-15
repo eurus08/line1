@@ -16,7 +16,10 @@
 #ifndef BLAS1_SCAL_H
 #define BLAS1_SCAL_H
 
-#include "types.h"
+#include "blas1/types.h"
+
+#include "blas1/types.h"
+
 
 void blas_scal(
     blas_int      n,

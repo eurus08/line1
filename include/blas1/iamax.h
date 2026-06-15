@@ -17,7 +17,10 @@
 #ifndef BLAS1_IAMAX_H
 #define BLAS1_IAMAX_H
 
-#include "types.h"
+#include "blas1/types.h"
+
+#include "blas1/types.h"
+
 
 blas_int blas_iamax(
     blas_int            n,

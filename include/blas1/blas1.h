@@ -17,15 +17,15 @@
 #define BLAS1_H
 
 /* Shared types and compiler macros — must come first */
-#include "types.h"
+#include "blas1/types.h"
 
 /* The 6 BLAS Level 1 operations */
-#include "dot.h"
-#include "axpy.h"
-#include "scal.h"
-#include "nrm2.h"
-#include "asum.h"
-#include "iamax.h"
+#include "blas1/dot.h"
+#include "blas1/axpy.h"
+#include "blas1/scal.h"
+#include "blas1/nrm2.h"
+#include "blas1/asum.h"
+#include "blas1/iamax.h"
 
 /*
  * Library version — encoded as a single integer for easy comparison.
