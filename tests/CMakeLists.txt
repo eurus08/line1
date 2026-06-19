@@ -19,3 +19,9 @@ add_executable(test_dot test_dot.c)
 target_link_libraries(test_dot PRIVATE blas1)
 target_include_directories(test_dot PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME dot COMMAND test_dot)
+
+# ---- test_axpy -------------------------------------------------------
+add_executable(test_axpy test_axpy.c)
+target_link_libraries(test_axpy PRIVATE blas1)
+target_include_directories(test_axpy PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME axpy COMMAND test_axpy)
