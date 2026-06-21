@@ -25,3 +25,9 @@ add_executable(test_axpy test_axpy.c)
 target_link_libraries(test_axpy PRIVATE blas1)
 target_include_directories(test_axpy PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME axpy COMMAND test_axpy)
+
+# ---- test_scal -------------------------------------------------------
+add_executable(test_scal test_scal.c)
+target_link_libraries(test_scal PRIVATE blas1)
+target_include_directories(test_scal PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME scal COMMAND test_scal)
