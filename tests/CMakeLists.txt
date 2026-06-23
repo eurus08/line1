@@ -59,3 +59,9 @@ add_executable(test_asum test_asum.c)
 target_link_libraries(test_asum PRIVATE blas1 ${MATH_LIBRARY})
 target_include_directories(test_asum PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME asum COMMAND test_asum)
+
+# ---- test_iamax ------------------------------------------------------
+add_executable(test_iamax test_iamax.c)
+target_link_libraries(test_iamax PRIVATE blas1 ${MATH_LIBRARY})
+target_include_directories(test_iamax PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME iamax COMMAND test_iamax)
