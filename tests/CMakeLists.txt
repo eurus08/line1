@@ -65,3 +65,12 @@ add_executable(test_iamax test_iamax.c)
 target_link_libraries(test_iamax PRIVATE blas1 ${MATH_LIBRARY})
 target_include_directories(test_iamax PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME iamax COMMAND test_iamax)
+
+# ---- test_correctness --------------------------------------------------
+# Cross-function tests (step 3.7): exercises compositions of dot, axpy,
+# scal, nrm2, asum, and iamax together, rather than any one function in
+# isolation. Linking against blas1 covers all six.
+add_executable(test_correctness test_correctness.c)
+target_link_libraries(test_correctness PRIVATE blas1 ${MATH_LIBRARY})
+target_include_directories(test_correctness PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME correctness COMMAND test_correctness)
