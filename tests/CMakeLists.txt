@@ -53,3 +53,9 @@ add_executable(test_nrm2 test_nrm2.c)
 target_link_libraries(test_nrm2 PRIVATE blas1 ${MATH_LIBRARY})
 target_include_directories(test_nrm2 PRIVATE ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME nrm2 COMMAND test_nrm2)
+
+# ---- test_asum -------------------------------------------------------
+add_executable(test_asum test_asum.c)
+target_link_libraries(test_asum PRIVATE blas1 ${MATH_LIBRARY})
+target_include_directories(test_asum PRIVATE ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME asum COMMAND test_asum)
