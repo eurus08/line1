@@ -167,6 +167,11 @@ if(BLAS1_BUILD_MPI)
     message(STATUS "  MPI_C_COMPILER      : ${MPI_C_COMPILER}")
     message(STATUS "  MPI_C_INCLUDE_DIRS  : ${MPI_C_INCLUDE_DIRS}")
     message(STATUS "  MPI_C_LIBRARIES     : ${MPI_C_LIBRARIES}")
+
+    # src/mpi/CMakeLists.txt defines the blas1_mpi target. It must come
+    # after find_package(MPI) above so the MPI::MPI_C imported target
+    # it links against already exists.
+    add_subdirectory(src/mpi)
 endif()
 
 # ------------------------------------------------------------------ #
