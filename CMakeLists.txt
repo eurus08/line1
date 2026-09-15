@@ -146,13 +146,38 @@ if(BLAS1_BUILD_BENCH)
 endif()
 
 # ------------------------------------------------------------------ #
-#  9. Summary print — shown every time cmake configures               #
+#  9. MPI parallel layer (Phase 6)                                    #
+#     Disabled by default — only probed when explicitly requested.    #
+#     find_package(MPI REQUIRED) here means: if the user turns this   #
+#     option on, a missing MPI install is a hard configure error,     #
+#     not a silent skip.                                              #
+#                                                                      #
+#     COMPONENTS C restricts the probe to the C bindings only — the   #
+#     bare form also checks for Fortran MPI bindings, which triggers  #
+#     a Fortran compiler search we don't need (this is a C-only       #
+#     project per LANGUAGES C above) and can fail on machines with    #
+#     no Fortran toolchain installed.                                 #
+# ------------------------------------------------------------------ #
+option(BLAS1_BUILD_MPI "Build the MPI parallel layer" OFF)
+
+if(BLAS1_BUILD_MPI)
+    find_package(MPI REQUIRED COMPONENTS C)
+
+    message(STATUS "MPI found:")
+    message(STATUS "  MPI_C_COMPILER      : ${MPI_C_COMPILER}")
+    message(STATUS "  MPI_C_INCLUDE_DIRS  : ${MPI_C_INCLUDE_DIRS}")
+    message(STATUS "  MPI_C_LIBRARIES     : ${MPI_C_LIBRARIES}")
+endif()
+
+# ------------------------------------------------------------------ #
+#  10. Summary print — shown every time cmake configures              #
 # ------------------------------------------------------------------ #
 message(STATUS "-------------------------------")
 message(STATUS "BLAS1 configuration summary")
 message(STATUS "  Build type : ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C compiler : ${CMAKE_C_COMPILER}")
 message(STATUS "  C standard : C${CMAKE_C_STANDARD}")
+message(STATUS "  MPI layer  : ${BLAS1_BUILD_MPI}")
 message(STATUS "  Install to : ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "-------------------------------")
 
