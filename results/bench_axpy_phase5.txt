@@ -1,0 +1,28 @@
+=============================================================================
+ blas_axpy benchmark -- Phase 4 baseline
+ Precision: double   Trials per size: 100 (median reported)
+=============================================================================
+           n        warm us    warm GF/s    warm GB/s        cold us    cold GF/s    cold GB/s
+-----------------------------------------------------------------------------
+        1000          0.133      15.0375     180.4500          0.652       3.0698      36.8381
+        4000          0.725      11.0345     132.4138          2.874       2.7841      33.4087
+       16000          3.146      10.1700     122.0404         12.580       2.5437      30.5246
+       64000         19.275       6.6409      79.6908         52.595       2.4337      29.2043
+      256000         78.736       6.5028      78.0334        204.075       2.5089      30.1066
+     1000000        590.289       3.3882      40.6580        806.938       2.4785      29.7421
+     4000000       3480.165       2.2987      27.5849       3545.404       2.2564      27.0773
+    16000000      16345.129       1.9578      23.4932      16665.367       1.9201      23.0418
+    64000000      68788.276       1.8608      22.3294      53366.756       2.3985      28.7820
+   100000000      83659.356       2.3906      28.6878      80400.698       2.4875      29.8505
+=============================================================================
+Notes:
+  - 'warm' = data resident from a previous touch; repeated calls
+    on the same buffers (best case, cache-friendly).
+  - 'cold' = cache deliberately flushed before every call (worst
+    case, first-touch).
+  - blas_axpy is 2 FLOPs and 24 bytes per element (read x,
+    read y, write y) -- an even lower arithmetic intensity than
+    dot, since axpy also pays a write cost dot never does.
+  - Compare these GB/s figures directly against bench_dot's --
+    they should land in a similar range, since both are bound
+    by the same DRAM bandwidth ceiling, not by FLOPs.
