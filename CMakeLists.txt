@@ -81,6 +81,25 @@ set(BLAS1_SOURCES
 )
 
 # ------------------------------------------------------------------ #
+#  5b. Kernel sources — selected based on SIMD backend               #
+#      DetectArch.cmake already set BLAS1_SIMD_BACKEND above.        #
+# ------------------------------------------------------------------ #
+if(BLAS1_SIMD_BACKEND STREQUAL "avx2")
+    list(APPEND BLAS1_SOURCES
+        kernel/x86/dot_avx2.c
+        kernel/x86/axpy_avx2.c
+    )
+elseif(BLAS1_SIMD_BACKEND STREQUAL "neon")
+    list(APPEND BLAS1_SOURCES
+        kernel/arm/dot_neon.c
+    )
+else()
+    list(APPEND BLAS1_SOURCES
+        kernel/generic/dot_generic.c
+    )
+endif()
+
+# ------------------------------------------------------------------ #
 #  6. Static library target                                            #
 #     This produces:  build/libblas1.a                                #
 # ------------------------------------------------------------------ #
