@@ -58,3 +58,21 @@ target_compile_options(bench_dot PRIVATE
 )
 add_test(NAME bench_dot COMMAND bench_dot)
 set_tests_properties(bench_dot PROPERTIES LABELS "bench")
+
+# ---- bench_axpy ------------------------------------------------------
+# Step 4.2: same structure as bench_dot, reusing timing.h as-is. See
+# bench/bench_axpy.c for what's different about axpy's methodology
+# (3x bytes/element instead of 2x, void return value, in-place mutation
+# of y across repeated warm-cache trials).
+add_executable(bench_axpy bench_axpy.c)
+target_link_libraries(bench_axpy PRIVATE blas1 ${MATH_LIBRARY})
+target_include_directories(bench_axpy PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_apply_compiler_flags(bench_axpy)
+target_compile_options(bench_axpy PRIVATE
+    -O3 -march=native -funroll-loops -fomit-frame-pointer -ffast-math
+)
+add_test(NAME bench_axpy COMMAND bench_axpy)
+set_tests_properties(bench_axpy PROPERTIES LABELS "bench")
