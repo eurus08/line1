@@ -87,22 +87,25 @@ set(BLAS1_SOURCES
 if(BLAS1_SIMD_BACKEND STREQUAL "avx2")
     list(APPEND BLAS1_SOURCES
         kernel/x86/dot_avx2.c
+        kernel/x86/axpy_avx2.c
     )
-    # AVX2 kernel needs -mavx2 -mfma on its own translation unit only
     set_source_files_properties(kernel/x86/dot_avx2.c
+        PROPERTIES COMPILE_OPTIONS "-mavx2;-mfma"
+    )
+    set_source_files_properties(kernel/x86/axpy_avx2.c
         PROPERTIES COMPILE_OPTIONS "-mavx2;-mfma"
     )
 elseif(BLAS1_SIMD_BACKEND STREQUAL "neon")
     list(APPEND BLAS1_SOURCES
         kernel/arm/dot_neon.c
+        kernel/arm/axpy_neon.c
     )
-    # NEON is always available on AArch64 — no extra flags needed
 else()
     list(APPEND BLAS1_SOURCES
         kernel/generic/dot_generic.c
+        kernel/generic/axpy_generic.c
     )
 endif()
-
 # ------------------------------------------------------------------ #
 #  6. Static library target                                            #
 #     This produces:  build/libblas1.a                                #
