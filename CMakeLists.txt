@@ -172,6 +172,14 @@ if(BLAS1_BUILD_MPI)
     # after find_package(MPI) above so the MPI::MPI_C imported target
     # it links against already exists.
     add_subdirectory(src/mpi)
+
+    # tests/mpi/CMakeLists.txt registers MPI test executables with
+    # CTest (step 6.7), launched via mpirun. Gated on BLAS1_BUILD_TESTS
+    # too -- someone who explicitly disabled the test suite shouldn't
+    # get MPI test executables built anyway.
+    if(BLAS1_BUILD_TESTS)
+        add_subdirectory(tests/mpi)
+    endif()
 endif()
 
 # ------------------------------------------------------------------ #

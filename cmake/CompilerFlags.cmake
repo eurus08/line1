@@ -144,4 +144,26 @@ function(target_apply_compiler_flags target)
         $<$<CONFIG:Debug>:${_BLAS1_FLAGS_DEBUG}>
     )
 
+    # Sanitizer flags (-fsanitize=address,undefined) are unlike ordinary
+    # compiler flags: the LINKER needs them too, not just the compiler,
+    # because they pull in libasan/libubsan's runtime support at link
+    # time.
+    #
+    # PUBLIC (not PRIVATE) is required here, for a subtle reason: PRIVATE
+    # link options on a STATIC library have NO EFFECT AT ALL, because
+    # CMake never invokes a linker for a static archive (it calls `ar`,
+    # not `ld`) -- there is no link step for a PRIVATE flag to attach to.
+    # PUBLIC link options, in contrast, are propagated as a USAGE
+    # REQUIREMENT to any target that links against this one, even though
+    # this target itself never "links". That propagation is exactly what
+    # makes -fsanitize=... appear on, say, test_dot's link command when
+    # test_dot links the blas1 static library -- without it, every
+    # executable linking a sanitizer-instrumented static library fails
+    # with "undefined reference to __asan_report_load8" and similar,
+    # regardless of what flags that executable's own source was compiled
+    # with.
+    target_link_options(${target} PUBLIC
+        $<$<CONFIG:Debug>:${_BLAS1_FLAGS_DEBUG}>
+    )
+
 endfunction()
