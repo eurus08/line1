@@ -180,6 +180,14 @@ if(BLAS1_BUILD_MPI)
     if(BLAS1_BUILD_TESTS)
         add_subdirectory(tests/mpi)
     endif()
+
+    # bench/mpi/CMakeLists.txt registers the MPI scaling benchmark
+    # (step 6.8). Gated on BLAS1_BUILD_BENCH for the same reason the
+    # serial benchmarks are (section 8 above) -- benchmarks take much
+    # longer to run than tests and aren't needed for a normal build.
+    if(BLAS1_BUILD_BENCH)
+        add_subdirectory(bench/mpi)
+    endif()
 endif()
 
 # ------------------------------------------------------------------ #
