@@ -26,7 +26,7 @@
 set(BLAS1_MPI_SOURCES
     mpi_dot.c        # step 6.3 — done
     mpi_axpy.c       # step 6.4 — done
-    # mpi_nrm2.c     <- step 6.5
+    mpi_nrm2.c       # step 6.5 — done
     # mpi_iamax.c    <- step 6.6
 )
 
