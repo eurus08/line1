@@ -1,64 +1,7 @@
-/*
- * mpi_nrm2.h — MPI-parallel Euclidean norm (L2 norm)
- *
- * Computes: result = sqrt( sum over ALL ranks( x[i]^2 ) )
- *
- * =========================================================================
- * WHY THIS IS NOT "LOCAL SUM OF SQUARES, THEN ALLREDUCE, THEN SQRT"
- * =========================================================================
- *
- * That simpler version is tempting -- it's what a first pass at the
- * Phase 6 plan describes, and it produces the right answer for
- * ordinary vectors. But it silently reintroduces exactly the bug
- * blas_nrm2() (see nrm2.c) was written to avoid: if any element is
- * around 1e200, squaring it overflows to Inf before MPI ever gets
- * involved. If any element is around 1e-200, squaring it underflows
- * to 0.0 and vanishes from the sum. The serial library goes to real
- * trouble to prevent this (the Blue 1978 / LAPACK dnrm2 scaling
- * trick) -- an MPI wrapper that skips that trouble is not really
- * offering the same function in parallel, it's offering a
- * numerically weaker one that happens to agree on "nice" inputs.
- *
- * =========================================================================
- * THE ALGORITHM USED HERE -- DISTRIBUTED VERSION OF THE SAME TRICK
- * =========================================================================
- *
- * Serial nrm2 does this in two PASSES over one array:
- *   Pass 1: scale = max(|x[i]|)
- *   Pass 2: sum of (x[i]/scale)^2, Kahan-compensated
- *   Result: scale * sqrt(sum)
- *
- * The MPI version needs the SAME two quantities, but each one now
- * has to be combined ACROSS ranks, not just across elements. That
- * means two synchronisation points instead of nrm2's one:
- *
- *   Step 1: local_scale  = max(|x[i]|) on this rank's slice
- *           (reuses blas_iamax(), same as the serial code does)
- *   Step 2: MPI_Allreduce(..., MPI_MAX, ...) -> global_scale
- *           [FIRST SYNC POINT]
- *   Step 3: local sum of (x[i]/global_scale)^2, Kahan-compensated
- *           -- every rank now divides by the SAME global_scale, so
- *           every term across every rank is safely in [0, 1]
- *   Step 4: MPI_Allreduce(..., MPI_SUM, ...) -> global_sum
- *           [SECOND SYNC POINT]
- *   Step 5: return global_scale * sqrt(global_sum)
- *
- * This costs one extra MPI collective compared to the simpler
- * version, but it means blas_mpi_nrm2 is correct for the exact same
- * input range the serial blas_nrm2 is correct for -- no silent
- * precision cliff introduced by parallelising.
- *
- * Parameters:
- *   n_local - number of elements in THIS RANK's local slice
- *   x       - this rank's local slice (read-only)
- *   incx    - stride for x
- *   comm    - communicator to reduce across
- *
- * Returns: the GLOBAL Euclidean norm, identical on every rank.
- *
- * Collective operation, TWICE over: every rank in comm must call
- * this function, and must do so in the same relative order as every
- * other rank (both Allreduce calls are synchronisation points).
+/**
+ * @file mpi_nrm2.h
+ * @ingroup mpi
+ * @brief MPI-parallel Euclidean (L2) norm.
  */
 
 #ifndef BLAS1_MPI_NRM2_H
@@ -67,6 +10,45 @@
 #include <mpi.h>
 #include "blas1/types.h"
 
+/**
+ * @ingroup mpi
+ * @brief Computes the Euclidean norm of a vector distributed across
+ *        an MPI communicator.
+ *
+ * @f[ \mathrm{result} = \sqrt{\sum_{\text{all ranks}} \sum_i x_i^2} @f]
+ *
+ * @par Why this needs two MPI collectives, not one
+ * The naive approach -- local sum of squares, @c MPI_Allreduce, then
+ * @c sqrt -- produces the right answer for ordinary vectors, but
+ * silently reintroduces exactly the bug the serial blas_nrm2() was
+ * written to avoid: an element around @f$ 10^{200} @f$ overflows to
+ * @c Inf when squared, before MPI is ever involved. This function
+ * instead performs the distributed version of blas_nrm2()'s scaled
+ * two-pass algorithm:
+ *   -# Local @c scale = max(|x_i|) on this rank's slice (reuses
+ *      blas_iamax(), exactly as blas_nrm2() does).
+ *   -# @c MPI_Allreduce(..., @c MPI_MAX, ...) -> global scale.
+ *      **First synchronisation point.**
+ *   -# Local sum of @f$ (x_i / \text{global\_scale})^2 @f$,
+ *      Kahan-compensated. Every rank now divides by the *same*
+ *      global scale, so every term across every rank is safely in
+ *      @f$ [0, 1] @f$ -- squaring it can neither overflow nor
+ *      underflow.
+ *   -# @c MPI_Allreduce(..., @c MPI_SUM, ...) -> global sum of
+ *      scaled squares. **Second synchronisation point.**
+ *   -# Return @c global_scale @f$ \times \sqrt{\text{global\_sum}} @f$.
+ *
+ * @warning **Collective operation, twice over.** Every rank in
+ *          @p comm must call this function, and in the same relative
+ *          order as every other rank (both @c MPI_Allreduce calls are
+ *          synchronisation points).
+ *
+ * @param n_local Number of elements in *this rank's* local slice.
+ * @param x       This rank's local slice (read-only).
+ * @param incx    Stride for @p x.
+ * @param comm    The communicator to reduce across.
+ * @return The global Euclidean norm, identical on every rank.
+ */
 BLAS_REAL blas_mpi_nrm2(
     blas_int            n_local,
     const BLAS_REAL   * BLAS_RESTRICT x,

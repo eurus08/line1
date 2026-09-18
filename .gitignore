@@ -5,12 +5,20 @@ build/
 *.dylib
 
 # CMake generated files
+# NOTE: build/Makefile is already covered by "build/" above. A bare
+# "Makefile" pattern used to sit here and silently blocked the
+# hand-written root-level convenience Makefile from ever being
+# tracked by git -- caught while adding the `make docs` target in
+# Phase 7. Do not re-add a bare "Makefile" line here.
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
-Makefile
 install_manifest.txt
 CTestTestfile.cmake
+
+# Generated API documentation (Phase 7, step 7.2) -- regenerate with
+# `make docs` or `doxygen Doxyfile`, no need to commit the output.
+docs/
 
 # Compiled object files
 *.o
