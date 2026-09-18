@@ -183,6 +183,23 @@ static void test_edge_cases(void)
 /*  3. Precision tests vs a long double reference                       */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Reference implementation using long double for extra precision.
+ *
+ * CAVEAT for anyone extending this pattern: `long double` is only
+ * genuinely wider than `double` on x86_64 (80-bit extended
+ * precision there). On AArch64/ARM64 (Apple Silicon, Linux ARM64),
+ * the platform ABI defines `long double` as IDENTICAL to `double` --
+ * there is no extended-precision type at all on that platform. A
+ * `long double` running-sum reference is safe for well-conditioned
+ * inputs (moderate-magnitude terms, no sub-ULP cancellation), which
+ * is all this function is used for below. It is NOT safe as a
+ * reference for an adversarial test specifically designed to probe
+ * sub-ULP accumulation effects -- see test_precision_many_small_terms()
+ * below, which used to call this function and failed on ARM64 CI for
+ * exactly this reason. That test now computes its reference
+ * analytically instead, with no dependence on `long double` at all.
+ */
 static long double reference_asum_ld(blas_int n, const BLAS_REAL *x)
 {
     long double sum = 0.0L;
@@ -266,13 +283,45 @@ static void test_precision_many_small_terms(void)
         x[i] = (BLAS_REAL)1e-16;
     }
 
-    long double ref    = reference_asum_ld(N, x);
-    BLAS_REAL   result = blas_asum(N, x, 1);
+    /*
+     * Reference: computed analytically in ONE step, not via a
+     * long-double accumulation loop.
+     *
+     * This test used to compute its reference the same way
+     * reference_asum_ld() does -- a running sum in `long double`,
+     * trusted to be more precise than the `double` result under
+     * test. That assumption is platform-dependent in a way that
+     * broke this specific test (caught via a real CI failure on
+     * macOS/Apple Silicon): on x86_64, `long double` is 80-bit
+     * extended precision, genuinely wider than `double`. On AArch64
+     * (ARM64) -- both Apple Silicon and Linux ARM64 -- the platform
+     * ABI defines `long double` as IDENTICAL to `double`, with no
+     * extended-precision type at all. On ARM64, a `long double`
+     * running-sum reference therefore suffers the EXACT SAME
+     * sub-ULP rounding-away problem this test exists to detect in
+     * the code under test -- corrupting the "ground truth" itself,
+     * not just the thing being measured against it. Concretely: the
+     * reference computed 1.0 as its answer instead of the true
+     * 1.0000000001, because on ARM64 each individual addition of
+     * 1e-16 to a running sum near 1.0 is below that sum's rounding
+     * threshold and vanishes -- a million times in a row.
+     *
+     * The fix: this test's input is fully known and deterministic
+     * (one 1.0 term, (N-1) identical 1e-16 terms), so the exact
+     * answer can be computed in a single multiply and a single add
+     * -- each individually correctly rounded under IEEE 754, with no
+     * repeated sub-ULP accumulation for rounding to silently erase.
+     * This is accurate to double precision's own limits on any
+     * platform, with no dependence on `long double` at all.
+     */
+    double exact_expected = 1.0 + (double)(N - 1) * 1e-16;
+
+    BLAS_REAL result = blas_asum(N, x, 1);
 
     /* Strictly between the measured naive error (~9.996e-11) and the
      * measured -ffast-math Kahan error (~2.5e-11). */
     check_rel("blas_asum resolves epsilon-scale terms better than naive summation",
-              (double)result, (double)ref, 5e-11);
+              (double)result, exact_expected, 5e-11);
 }
 
 /* ------------------------------------------------------------------ */

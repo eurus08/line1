@@ -53,3 +53,7 @@ add_test(NAME bench_mpi_dot
     COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${BLAS1_MPI_TEST_NPROCS}
             ${MPIEXEC_PREFLAGS} $<TARGET_FILE:bench_mpi_dot> 1000000 ${MPIEXEC_POSTFLAGS})
 set_tests_properties(bench_mpi_dot PROPERTIES LABELS "bench")
+# See tests/mpi/CMakeLists.txt for why this is set (OpenMPI-internal
+# leaks unrelated to this project's code, tripping LeakSanitizer if
+# this benchmark is ever built and run in a Debug+sanitizer config).
+set_tests_properties(bench_mpi_dot PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
