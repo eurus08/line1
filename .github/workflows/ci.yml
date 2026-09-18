@@ -1,0 +1,119 @@
+# .github/workflows/ci.yml — Phase 7, step 7.3
+#
+# Builds and tests blas1 on every push/PR, across three platforms:
+#   - Linux x86_64  (ubuntu-latest)
+#   - Linux ARM64   (ubuntu-24.04-arm -- free for public repos, GA
+#                    since August 2025; see actions/partner-runner-images)
+#   - macOS         (macos-latest -- Apple Silicon / arm64 since
+#                    macOS 14, so this is ALSO an ARM64 job)
+#
+# Each platform builds TWICE: once with the serial library only
+# (BLAS1_BUILD_MPI=OFF, the default most consumers will actually
+# build), and once with the full MPI layer enabled. A separate job
+# builds Debug with sanitizers on -- this exact configuration once
+# had a real bug (see cmake/CompilerFlags.cmake's comment on
+# target_link_options) that a Release-only CI matrix would never
+# have caught.
+#
+# Note worth knowing: on this developer's own machine, AVX2 is
+# unavailable (generic fallback active) and NEON is obviously
+# unreachable (x86 hardware). Both the x86 CI job and the ARM/macOS
+# CI jobs are therefore the FIRST place the AVX2 and NEON kernels
+# (cmake/DetectArch.cmake, kernel/x86/, kernel/arm/) ever actually
+# get compiled and exercised by the test suite at all -- this CI
+# matrix isn't just a rubber-stamp, it's genuine new coverage.
+
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:   # allows manually triggering a run from the Actions tab
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false   # one platform failing shouldn't cancel the others --
+                          # we want to see all three results every time.
+      matrix:
+        include:
+          - name: Linux x86_64
+            os: ubuntu-latest
+            install_mpi: sudo apt-get update && sudo apt-get install -y libopenmpi-dev openmpi-bin
+
+          - name: Linux ARM64
+            os: ubuntu-24.04-arm
+            install_mpi: sudo apt-get update && sudo apt-get install -y libopenmpi-dev openmpi-bin
+
+          - name: macOS (Apple Silicon / ARM64)
+            os: macos-latest
+            install_mpi: brew install open-mpi
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install MPI
+        run: ${{ matrix.install_mpi }}
+
+      - name: Show compiler and CMake versions
+        run: |
+          cmake --version
+          cc --version || clang --version
+
+      # ---------------------------------------------------------- #
+      # Configuration 1: serial library only (the default most
+      # people building this library will actually use)
+      # ---------------------------------------------------------- #
+      - name: Configure (serial)
+        run: cmake -B build-serial -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (serial)
+        run: cmake --build build-serial --parallel
+
+      - name: Test (serial)
+        run: ctest --test-dir build-serial --output-on-failure
+
+      # ---------------------------------------------------------- #
+      # Configuration 2: MPI layer + benchmarks enabled
+      # ---------------------------------------------------------- #
+      - name: Configure (MPI + benchmarks)
+        run: >
+          cmake -B build-mpi -DCMAKE_BUILD_TYPE=Release
+          -DBLAS1_BUILD_MPI=ON
+          -DBLAS1_BUILD_BENCH=ON
+          -DBLAS1_MPI_TEST_NPROCS=4
+          -DMPIEXEC_PREFLAGS=--oversubscribe
+
+      - name: Build (MPI)
+        run: cmake --build build-mpi --parallel
+
+      - name: Test (MPI)
+        run: ctest --test-dir build-mpi --output-on-failure
+
+  debug-sanitizers:
+    name: Debug build + ASan/UBSan (Linux x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install MPI
+        run: sudo apt-get update && sudo apt-get install -y libopenmpi-dev openmpi-bin
+
+      - name: Configure (Debug, MPI on)
+        run: >
+          cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug
+          -DBLAS1_BUILD_MPI=ON
+          -DBLAS1_MPI_TEST_NPROCS=4
+          -DMPIEXEC_PREFLAGS=--oversubscribe
+
+      - name: Build (Debug)
+        run: cmake --build build-debug --parallel
+
+      - name: Test under ASan/UBSan
+        run: ctest --test-dir build-debug --output-on-failure
