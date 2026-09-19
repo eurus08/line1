@@ -207,8 +207,10 @@ A few decisions worth knowing about if you're reading the source:
 | 4 | Benchmarking infrastructure | ✅ |
 | 5 | SIMD kernels (AVX2 / NEON) | ✅ |
 | 6 | MPI parallel layer | ✅ |
-| 7 | Docs, packaging, CI | ⏳ in progress |
+| 7 | Docs, packaging, CI | ✅ |
+| 8 | BLAS Level 2 (matrix-vector operations) | ⏳ in progress |
+| 9 | BLAS Level 3 (matrix-matrix operations) | ⏳ in progress |
 
 ## License
 
-Not yet licensed — a permissive license (MIT is the natural default for a project like this) is planned as part of Phase 7 polish.
+MIT — see [LICENSE](LICENSE).
