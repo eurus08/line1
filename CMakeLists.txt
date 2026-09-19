@@ -114,22 +114,84 @@ else()
     )
 endif()
 # ------------------------------------------------------------------ #
-#  6. Static library target                                            #
-#     This produces:  build/libblas1.a                                #
+#  6. Library targets — static (always) + shared (opt-in, step 7.5)   #
+#     This produces:  build/libblas1.a   (and libblas1.so if enabled) #
 # ------------------------------------------------------------------ #
-add_library(blas1 STATIC ${BLAS1_SOURCES})
 
-# Tell CMake where our public headers live.
-# SYSTEM suppresses warnings from our own headers in consuming targets.
-target_include_directories(blas1
+# The real target is named blas1_static, not blas1 -- this is what
+# lets a static AND a shared library coexist as build artifacts that
+# are both, correctly, called "blas1" (libblas1.a / libblas1.so): a
+# single CMake target can only be one of STATIC or SHARED, so two
+# distinct targets are unavoidable once both are wanted "alongside"
+# each other rather than as an either/or choice.
+#
+# The `blas1` ALIAS below is what keeps every existing
+# target_link_libraries(... blas1) reference across tests/,
+# bench/, src/mpi/, tests/mpi/, and bench/mpi/ working completely
+# unchanged -- none of those files needed to be touched for this
+# step. Internal consumers (tests, benchmarks, the MPI layer) always
+# link the static library specifically, on purpose: it keeps their
+# executables self-contained with no runtime dependency on finding a
+# co-located .so via RPATH. The shared library, when built, exists
+# purely as an additional installable artifact for external
+# consumers who want dynamic linking -- nothing in this repository
+# itself links against it.
+add_library(blas1_static STATIC ${BLAS1_SOURCES})
+add_library(blas1 ALIAS blas1_static)
+
+target_include_directories(blas1_static
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 
 # Apply compiler flags defined in cmake/CompilerFlags.cmake
-target_apply_compiler_flags(blas1)
-target_apply_arch_flags(blas1) 
+target_apply_compiler_flags(blas1_static)
+target_apply_arch_flags(blas1_static)
+
+# OUTPUT_NAME (not the target name itself) is what controls the
+# actual file on disk -- this is what makes libblas1_static.a
+# instead be written as libblas1.a.
+set_target_properties(blas1_static PROPERTIES
+    OUTPUT_NAME blas1
+)
+
+option(BLAS1_BUILD_SHARED "Also build a shared library (libblas1.so) alongside the static one" OFF)
+
+if(BLAS1_BUILD_SHARED)
+    add_library(blas1_shared SHARED ${BLAS1_SOURCES})
+
+    target_include_directories(blas1_shared
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+            $<INSTALL_INTERFACE:include>
+    )
+
+    target_apply_compiler_flags(blas1_shared)
+    target_apply_arch_flags(blas1_shared)
+
+    # CMake automatically compiles SHARED library sources with -fPIC --
+    # no POSITION_INDEPENDENT_CODE property needed here, that part is
+    # handled unconditionally by CMake itself for any SHARED target.
+
+    set_target_properties(blas1_shared PROPERTIES
+        OUTPUT_NAME    blas1
+        # Standard shared-library versioning: the real file is
+        # libblas1.so.1.0.0, with libblas1.so.1 and libblas1.so as
+        # symlinks pointing to it. VERSION is the full version;
+        # SOVERSION (just the major number) is what a binary built
+        # against this library actually records as its runtime
+        # dependency -- so a future 1.1.0 stays load-compatible with
+        # anything linked against 1.0.0, while a future 2.0.0
+        # (a new SOVERSION) correctly would not.
+        VERSION        ${PROJECT_VERSION}
+        SOVERSION      ${PROJECT_VERSION_MAJOR}
+    )
+
+    message(STATUS "Shared library: ON  (libblas1.so.${PROJECT_VERSION})")
+else()
+    message(STATUS "Shared library: OFF (static only -- enable with -DBLAS1_BUILD_SHARED=ON)")
+endif()
 
 # ------------------------------------------------------------------ #
 #  7. Tests (Phase 3)                                                  #
@@ -204,13 +266,33 @@ endif()
 #      that wants to consume this library once installed.            #
 # ------------------------------------------------------------------ #
 
-# The blas1 target's own target_include_directories (section 6) already
-# uses $<INSTALL_INTERFACE:include> -- this install() call is what
-# makes that interface true after `cmake --install`, by actually
+# The blas1_static target's own target_include_directories (section 6)
+# already uses $<INSTALL_INTERFACE:include> -- this install() call is
+# what makes that interface true after `cmake --install`, by actually
 # placing blas1 where that generator expression promised it would be.
-install(TARGETS blas1
+#
+# Note: this installs blas1_static, not the `blas1` ALIAS from
+# section 6 -- ALIAS targets cannot be passed to install(TARGETS) at
+# all (CMake rejects it outright), so the real target name has to be
+# used here regardless of which name the rest of the build refers to
+# it by.
+install(TARGETS blas1_static
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
+
+if(BLAS1_BUILD_SHARED)
+    # Three destination types, covering every platform's convention:
+    # ARCHIVE is only reached here on Windows (a SHARED target there
+    # also produces a .lib import library); LIBRARY is where the
+    # actual libblas1.so lands on Linux/macOS; RUNTIME is where a
+    # Windows .dll would go. Harmless to list all three unconditionally
+    # -- each only applies on the platforms where that artifact exists.
+    install(TARGETS blas1_shared
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
 
 install(DIRECTORY include/blas1
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
@@ -238,6 +320,7 @@ message(STATUS "  Build type : ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C compiler : ${CMAKE_C_COMPILER}")
 message(STATUS "  C standard : C${CMAKE_C_STANDARD}")
 message(STATUS "  MPI layer  : ${BLAS1_BUILD_MPI}")
+message(STATUS "  Shared lib : ${BLAS1_BUILD_SHARED}")
 message(STATUS "  Install to : ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "-------------------------------")
 

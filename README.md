@@ -43,6 +43,7 @@ ctest --test-dir build
 | `BLAS1_BUILD_MPI` | `OFF` | Build the MPI parallel layer, its tests, and its benchmark |
 | `BLAS1_USE_FLOAT` | `OFF` | Build in single precision (`float`) instead of `double` |
 | `BLAS1_STRICT_IEEE` | `OFF` | Disable `-ffast-math`, for callers who need guaranteed IEEE-compliant rounding (e.g. Kahan compensation to survive exactly as written) |
+| `BLAS1_BUILD_SHARED` | `OFF` | Also build `libblas1.so` (properly versioned, `libblas1.so.1.0.0` with `.so.1`/`.so` symlinks) alongside the always-built static `libblas1.a` |
 
 With the MPI layer and benchmarks both enabled:
 
