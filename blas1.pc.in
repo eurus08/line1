@@ -1,0 +1,23 @@
+# blas1.pc.in — template for the pkg-config file, processed by CMake's
+# configure_file() into build/blas1.pc, then installed alongside the
+# library so other projects can find and link it with:
+#
+#   pkg-config --cflags --libs blas1
+#
+# @-delimited variables are substituted by CMake (configure_file with
+# @ONLY); ${...} variables are pkg-config's own, resolved at the time
+# something actually queries this file, not at install time -- this
+# lets the file stay correct even if the install prefix is relocated
+# later (pkg-config re-resolves ${prefix}-relative paths itself).
+
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: @PROJECT_NAME@
+Description: @PROJECT_DESCRIPTION@
+Version: @PROJECT_VERSION@
+Libs: -L${libdir} -lblas1
+Libs.private: -lm
+Cflags: -I${includedir}

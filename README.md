@@ -1,4 +1,4 @@
-# line1
+# blas1
 
 A production-quality implementation of **BLAS Level 1** (vector-vector operations) in C, built from scratch across seven phases: serial implementation, correctness testing, benchmarking, SIMD kernels, and an MPI-parallel layer.
 
@@ -53,6 +53,28 @@ ctest --test-dir build          # runs serial + MPI tests + benchmark smoke test
 ```
 
 Architecture-specific SIMD kernels (AVX2 on x86, NEON on ARM) are detected and selected automatically at configure time — no flag needed. If neither is available, a portable scalar fallback is used, and this is reported in the configure output either way.
+
+## Installing
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DBLAS1_BUILD_MPI=ON
+cmake --build build --parallel
+cmake --install build --prefix /your/install/path   # defaults to /usr/local
+```
+
+This installs the static library, public headers, and a [pkg-config](https://en.wikipedia.org/wiki/Pkg-config) file, so other projects can find and link this library with:
+
+```bash
+gcc myprogram.c $(pkg-config --cflags --libs blas1) -o myprogram
+```
+
+If built with `-DBLAS1_BUILD_MPI=ON`, a second file, `blas1-mpi`, covers the MPI layer separately (`Requires: blas1`, so its own flags chain in `blas1`'s automatically):
+
+```bash
+mpicc myprogram.c $(pkg-config --cflags --libs blas1-mpi) -o myprogram
+```
+
+`make install` is a shorthand for the same thing.
 
 ## Testing
 

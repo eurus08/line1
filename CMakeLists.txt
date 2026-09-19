@@ -18,6 +18,13 @@ project(blas1
     LANGUAGES   C
 )
 
+# GNUInstallDirs sets portable install locations (CMAKE_INSTALL_LIBDIR,
+# CMAKE_INSTALL_INCLUDEDIR, ...) -- e.g. "lib" vs "lib64" depending on
+# the distro's own convention, rather than hardcoding one. Needed by
+# section 11 (Installation) below, and included here near the top
+# since it's used across the file.
+include(GNUInstallDirs)
+
 
 # ------------------------------------------------------------------ #
 #  0. Let CMake tell vscode where /include is                       #
@@ -191,7 +198,39 @@ if(BLAS1_BUILD_MPI)
 endif()
 
 # ------------------------------------------------------------------ #
-#  10. Summary print — shown every time cmake configures              #
+#  11. Installation (Phase 7, step 7.4)                               #
+#      Enables `cmake --install build` and, via the generated .pc    #
+#      file, `pkg-config --cflags --libs blas1` for any project      #
+#      that wants to consume this library once installed.            #
+# ------------------------------------------------------------------ #
+
+# The blas1 target's own target_include_directories (section 6) already
+# uses $<INSTALL_INTERFACE:include> -- this install() call is what
+# makes that interface true after `cmake --install`, by actually
+# placing blas1 where that generator expression promised it would be.
+install(TARGETS blas1
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(DIRECTORY include/blas1
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.h"
+)
+
+# Generate blas1.pc from the template at configure time (values like
+# CMAKE_INSTALL_PREFIX are only known then) and install it to the
+# standard pkg-config search location under the chosen libdir.
+configure_file(
+    ${CMAKE_SOURCE_DIR}/blas1.pc.in
+    ${CMAKE_BINARY_DIR}/blas1.pc
+    @ONLY
+)
+install(FILES ${CMAKE_BINARY_DIR}/blas1.pc
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+)
+
+# ------------------------------------------------------------------ #
+#  12. Summary print — shown every time cmake configures              #
 # ------------------------------------------------------------------ #
 message(STATUS "-------------------------------")
 message(STATUS "BLAS1 configuration summary")

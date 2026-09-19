@@ -51,6 +51,41 @@ if(BLAS1_MPI_SOURCES)
     # included at the root, so the function is already in scope.
     target_apply_compiler_flags(blas1_mpi)
 
+    # ------------------------------------------------------------------
+    # Installation (Phase 7, step 7.4) — mirrors the root CMakeLists.txt's
+    # section 11 for the serial blas1 target, but for blas1_mpi. Kept
+    # here rather than in the root file since blas1_mpi is defined here
+    # and only exists at all when this block runs.
+    # ------------------------------------------------------------------
+    install(TARGETS blas1_mpi
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    )
+
+    # Turn MPI_C_INCLUDE_DIRS / MPI_C_LIBRARIES (populated by the
+    # find_package(MPI) call in the root CMakeLists.txt) into plain
+    # space-separated strings blas1-mpi.pc.in can substitute directly.
+    # A consumer using pkg-config has no access to CMake imported
+    # targets like MPI::MPI_C -- the actual flags have to be spelled
+    # out literally in the .pc file itself.
+    set(BLAS1_MPI_PC_CFLAGS "")
+    foreach(_dir ${MPI_C_INCLUDE_DIRS})
+        string(APPEND BLAS1_MPI_PC_CFLAGS "-I${_dir} ")
+    endforeach()
+
+    set(BLAS1_MPI_PC_LIBS "")
+    foreach(_lib ${MPI_C_LIBRARIES})
+        string(APPEND BLAS1_MPI_PC_LIBS "${_lib} ")
+    endforeach()
+
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/blas1-mpi.pc.in
+        ${CMAKE_BINARY_DIR}/blas1-mpi.pc
+        @ONLY
+    )
+    install(FILES ${CMAKE_BINARY_DIR}/blas1-mpi.pc
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+    )
+
     message(STATUS "MPI layer: blas1_mpi target created (${BLAS1_MPI_SOURCES})")
 else()
     message(STATUS "MPI layer: scaffolding only, no source files yet (step 6.2)")

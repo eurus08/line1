@@ -8,6 +8,7 @@
 #   make test      -> run the test suite
 #   make bench     -> build + run benchmarks
 #   make docs      -> generate API documentation (requires doxygen)
+#   make install   -> install headers, library, and pkg-config file
 #   make clean     -> remove the build folder
 #   make rebuild   -> clean + build
 #   make info      -> print detected architecture and flags
@@ -15,7 +16,7 @@
 BUILD_DIR   := build
 BUILD_DEBUG := build-debug
 
-.PHONY: all build debug test bench docs clean rebuild info
+.PHONY: all build debug test bench docs install clean rebuild info
 
 # Default target
 all: build
@@ -48,6 +49,15 @@ bench:
 docs:
 	doxygen Doxyfile
 	@echo "Generated docs/html/index.html"
+
+# ── Install ─────────────────────────────────────────────────────────
+# Installs the static library, public headers, and pkg-config file(s)
+# to CMAKE_INSTALL_PREFIX (defaults to /usr/local; override with
+# `cmake -B build -DCMAKE_INSTALL_PREFIX=/your/path` before running
+# this, or `make install DESTDIR=/staging/root` for a staged install).
+# Builds first if the build directory doesn't already exist.
+install: build
+	cmake --install $(BUILD_DIR)
 
 # ── Clean ───────────────────────────────────────────────────────────
 clean:
