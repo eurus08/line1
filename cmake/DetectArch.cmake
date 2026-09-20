@@ -60,8 +60,22 @@ endif()
 #  Combined with -march=native, the CPU will support them too.        #
 # ------------------------------------------------------------------ #
 
-set(BLAS1_HAS_AVX2  FALSE)
-set(BLAS1_HAS_NEON  FALSE)
+# NOTE: Do NOT pre-set BLAS1_HAS_AVX2 / BLAS1_HAS_NEON here (e.g. to
+# FALSE) before calling check_c_source_compiles() below. That macro's
+# implementation is effectively:
+#
+#     if(NOT DEFINED "${VAR}")
+#         <run the actual compile test>
+#     endif()
+#
+# so pre-setting the result variable makes DEFINED true and the macro
+# silently skips the compile check, leaving the variable stuck at
+# whatever we pre-set it to (FALSE) forever -- on every CPU, on every
+# platform, regardless of real hardware/compiler support. This was a
+# real bug here: every x86 build (including CI) reported "AVX2 not
+# available" even when the compiler and CPU both supported it. If a
+# fallback default is ever needed again, unset() it right before the
+# check instead of set()-ing it beforehand.
 
 # --- AVX2 + FMA test (x86 only) ------------------------------------ #
 if(BLAS1_ARCH_X86)

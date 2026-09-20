@@ -15,13 +15,16 @@
 # target_link_options) that a Release-only CI matrix would never
 # have caught.
 #
-# Note worth knowing: on this developer's own machine, AVX2 is
-# unavailable (generic fallback active) and NEON is obviously
-# unreachable (x86 hardware). Both the x86 CI job and the ARM/macOS
-# CI jobs are therefore the FIRST place the AVX2 and NEON kernels
-# (cmake/DetectArch.cmake, kernel/x86/, kernel/arm/) ever actually
-# get compiled and exercised by the test suite at all -- this CI
-# matrix isn't just a rubber-stamp, it's genuine new coverage.
+# Note worth knowing: cmake/DetectArch.cmake used to pre-set its
+# result variables before running its compile checks, which silently
+# skipped the checks (CMake's check_c_source_compiles() is a no-op
+# once its result variable is already DEFINED) and forced the generic
+# scalar fallback on every platform, including this developer's own
+# AVX2-capable machine. That's fixed now -- detection genuinely runs
+# -- so the x86 CI job builds and tests the real AVX2 kernels
+# (kernel/x86/) and the ARM/macOS jobs build and test the real NEON
+# kernels (kernel/arm/), on top of whatever local coverage each
+# developer's own machine provides.
 
 name: CI
 

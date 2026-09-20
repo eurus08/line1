@@ -93,6 +93,8 @@ Testing philosophy: floating-point results are never compared with `==`. Every t
 
 Measured with `bench_dot`/`bench_axpy` (100 trials per size, median reported; full output in `results/`). `dot` is 2 FLOPs and 16 bytes per element; `axpy` is 2 FLOPs and 24 bytes:
 
+> **Re-measure before trusting these:** a bug in `cmake/DetectArch.cmake` (fixed — see commit) meant `BLAS1_HAS_AVX2`/`BLAS1_HAS_NEON` were pre-set before the compiler-support check ran, which silently skipped the check and forced the generic scalar fallback on every build, this one included. The table below was almost certainly measured on the scalar path, not AVX2. Re-run `make bench` now that detection actually works and replace these numbers.
+
 | n | dot warm GB/s | dot warm GFlop/s | axpy warm GB/s | axpy warm GFlop/s |
 |---:|---:|---:|---:|---:|
 | 1,000 | 61.1 | 7.63 | 180.5 | 15.04 |
