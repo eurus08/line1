@@ -58,7 +58,7 @@
 
 #include "blas1/iamax.h"
 #include "blas1/types.h"
-#include <math.h>   /* fabs() */
+/* fabs() replaced by BLAS_FABS() from types.h (precision-generic) */
 
 blas_int blas_iamax(blas_int n,
                     const BLAS_REAL * BLAS_RESTRICT x, blas_int incx)
@@ -78,7 +78,7 @@ blas_int blas_iamax(blas_int n,
 
     if (incx == 1) {
         for (blas_int i = 0; i < n; i++) {
-            BLAS_REAL ax = fabs(x[i]);
+            BLAS_REAL ax = BLAS_FABS(x[i]);
             if (ax > max_val) {
                 max_val = ax;
                 max_idx = i;
@@ -87,7 +87,7 @@ blas_int blas_iamax(blas_int n,
     } else {
         blas_int ix = 0;
         for (blas_int i = 0; i < n; i++) {
-            BLAS_REAL ax = fabs(x[ix]);
+            BLAS_REAL ax = BLAS_FABS(x[ix]);
             if (ax > max_val) {
                 max_val = ax;
                 max_idx = i;

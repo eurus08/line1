@@ -33,8 +33,13 @@
 static int g_failures = 0;
 static int g_checks    = 0;
 
-#define ABS_TOL 1e-9
-#define REL_TOL 1e-9
+#if defined(BLAS_USE_FLOAT)
+    #define ABS_TOL 1e-5
+    #define REL_TOL 1e-5
+#else
+    #define ABS_TOL 1e-9
+    #define REL_TOL 1e-9
+#endif
 
 static void report(int passed, const char *name, double got, double expected)
 {
@@ -241,38 +246,65 @@ static void test_precision_well_conditioned(void)
  * terms near machine epsilon are added one at a time: each addition
  * individually loses precision to rounding, and those losses compound.
  *
- * A direct probe (summing 1.0 plus one million terms of 1e-16, then
- * measuring against the asum.c implementation itself) measured:
+ * The term size must scale with the working precision's epsilon, not
+ * be a single constant shared between double and float: DBL_EPSILON
+ * (~2.22e-16) and FLT_EPSILON (~1.19e-7) differ by nine orders of
+ * magnitude, so a term chosen to sit "just below epsilon" for double
+ * is nine orders of magnitude too small to register at all in float --
+ * confirmed empirically: forcing the double-scale 1e-16 term through
+ * this project's actual blas_asum() under BLAS_USE_FLOAT produced
+ * *zero* measurable contribution from Kahan's compensation (result
+ * landed on exactly 1.0, identical to naive summation), because the
+ * term is that far below what a float-precision compensation variable
+ * can even represent as a meaningful residual against a sum near 1.0.
+ *
+ * Double-precision case (1e-16 term, N-1 = 1e6 additions), measured
+ * directly against this project's asum.c:
  *   - naive summation:                  relative error ~9.996e-11
  *   - Kahan, strict IEEE (-O2, no -ffast-math): relative error ~3.7e-14
  *   - Kahan, this project's Release flags
  *     (-O3 -march=native -ffast-math):  relative error ~2.5e-11
  *
+ * Float-precision case (1e-7 term, N-1 = 1e6 additions), measured the
+ * same way against this project's actual blas_asum() built with
+ * -DBLAS_USE_FLOAT:
+ *   - naive summation, Debug (-O0):            relative error ~1.746e-2
+ *   - Kahan,           Debug (-O0):             relative error ~2.167e-8
+ *   - naive AND Kahan, Release (-ffast-math):   relative error ~2.094e-3
+ *     (identical -- see below)
+ *
  * As documented in asum.c, -ffast-math is known to neutralise some of
  * Kahan's compensation by allowing the compiler to reassociate the
- * floating-point operations the algorithm depends on. The measurements
- * above confirm that empirically: -ffast-math Kahan is roughly 4x
- * better than naive here, not the ~2700x improvement seen under strict
- * IEEE math. The tolerance below is chosen to sit strictly between the
- * -ffast-math-degraded Kahan result and the naive result, so the test
- * still catches a regression to plain summation under EITHER flag
- * regime used by this project, while not requiring full strict-IEEE
- * Kahan accuracy that -ffast-math builds cannot provide.
- * Verified behavior across this project's three standard build flag
- * regimes: the real Kahan-compensated asum.c passes under -O2, the
- * project's Release flags, and -O0 debug builds. A deliberately broken
- * naive (non-Kahan) implementation was confirmed to FAIL this check
- * under -O2 and -O0 — but, consistent with the caveat above, slips
- * through under -ffast-math, where GCC's own reassociation of the
- * naive loop happens to land close enough to the degraded-Kahan result
- * that a fixed tolerance can no longer separate them. This is an
- * inherent limit of testing under -ffast-math, not a flaw specific to
- * this check: the test's real guarantee is that the actual
- * implementation passes under every flag regime this project uses,
- * and that a regression is caught under the two non-fast-math regimes.
+ * floating-point operations the algorithm depends on. For double, some
+ * benefit survives even under -ffast-math (Kahan ~2.5e-11 vs naive
+ * ~9.996e-11, roughly 4x better). For float the effect is total: under
+ * -ffast-math, Kahan's result is bit-for-bit identical to naive's here
+ * -- the compiler's reassociation fully eliminates the compensation's
+ * effect at this precision. The tolerance below is chosen accordingly:
+ * strictly between the -ffast-math result (shared by both
+ * implementations) and the Debug-build naive-summation error, so the
+ * test still catches a regression to plain summation under Debug
+ * builds, passes under Release for the real (if fully degraded under
+ * that flag regime) Kahan implementation, and does not pretend float
+ * -ffast-math builds get any of Kahan's real benefit -- they don't.
+ * This mirrors the double case's documented caveat: the guarantee is
+ * that the actual implementation passes under every flag regime this
+ * project uses, not that Kahan's benefit is visible under all of them.
  */
 static void test_precision_many_small_terms(void)
 {
+#if defined(BLAS_USE_FLOAT)
+    #define STRESS_TERM     1e-7   /* just below FLT_EPSILON (~1.19e-7) */
+    #define STRESS_REL_TOL  5e-3   /* between the -ffast-math result
+                                       (~2.1e-3) and a Debug-build naive
+                                       regression (~1.7e-2) */
+#else
+    #define STRESS_TERM     1e-16  /* just below DBL_EPSILON (~2.22e-16) */
+    #define STRESS_REL_TOL  5e-11  /* between the -ffast-math Kahan
+                                       result (~2.5e-11) and the naive
+                                       result (~9.996e-11) */
+#endif
+
     printf("-- precision test: many epsilon-scale terms (Kahan stress case) --\n");
 
     enum { N = 1000001 };
@@ -280,7 +312,7 @@ static void test_precision_many_small_terms(void)
 
     x[0] = (BLAS_REAL)1.0;
     for (int i = 1; i < N; i++) {
-        x[i] = (BLAS_REAL)1e-16;
+        x[i] = (BLAS_REAL)STRESS_TERM;
     }
 
     /*
@@ -307,21 +339,22 @@ static void test_precision_many_small_terms(void)
      * threshold and vanishes -- a million times in a row.
      *
      * The fix: this test's input is fully known and deterministic
-     * (one 1.0 term, (N-1) identical 1e-16 terms), so the exact
+     * (one 1.0 term, (N-1) identical STRESS_TERM terms), so the exact
      * answer can be computed in a single multiply and a single add
      * -- each individually correctly rounded under IEEE 754, with no
      * repeated sub-ULP accumulation for rounding to silently erase.
      * This is accurate to double precision's own limits on any
      * platform, with no dependence on `long double` at all.
      */
-    double exact_expected = 1.0 + (double)(N - 1) * 1e-16;
+    double exact_expected = 1.0 + (double)(N - 1) * STRESS_TERM;
 
     BLAS_REAL result = blas_asum(N, x, 1);
 
-    /* Strictly between the measured naive error (~9.996e-11) and the
-     * measured -ffast-math Kahan error (~2.5e-11). */
     check_rel("blas_asum resolves epsilon-scale terms better than naive summation",
-              (double)result, exact_expected, 5e-11);
+              (double)result, exact_expected, STRESS_REL_TOL);
+
+#undef STRESS_TERM
+#undef STRESS_REL_TOL
 }
 
 /* ------------------------------------------------------------------ */

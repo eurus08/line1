@@ -24,7 +24,7 @@
 #include "blas1/mpi/mpi_types.h"
 #include "blas1/iamax.h"
 #include "blas1/types.h"
-#include <math.h>   /* fabs() */
+/* fabs() replaced by BLAS_FABS() from types.h (precision-generic) */
 
 blas_mpi_iamax_result_t blas_mpi_iamax(
     blas_int            n_local,
@@ -43,7 +43,7 @@ blas_mpi_iamax_result_t blas_mpi_iamax(
     BLAS_REAL local_value;
 
     if (local_index > 0) {
-        local_value = fabs(x[(local_index - 1) * incx]);
+        local_value = BLAS_FABS(x[(local_index - 1) * incx]);
     } else {
         /* Empty local slice: guaranteed to lose any real MAXLOC
          * comparison (see file header comment). */

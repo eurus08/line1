@@ -15,6 +15,7 @@
 
 #include <stdint.h>   /* int64_t, int32_t */
 #include <stddef.h>   /* size_t           */
+#include <math.h>     /* fabs()/fabsf(), sqrt()/sqrtf() -- see BLAS_FABS/BLAS_SQRT below */
 
 /**
  * @typedef blas_int
@@ -46,6 +47,28 @@ typedef double  blas_double;
     typedef blas_float  BLAS_REAL;
 #else
     typedef blas_double BLAS_REAL;
+#endif
+
+/**
+ * @def BLAS_FABS
+ * @def BLAS_SQRT
+ * @brief Precision-generic absolute value / square root on BLAS_REAL.
+ *
+ * <math.h>'s fabs()/sqrt() take and return @c double; calling them
+ * directly on a @c float (BLAS_REAL when BLAS_USE_FLOAT is set)
+ * silently promotes the argument to double and truncates the result
+ * back to float on return -- extra work, a -Wdouble-promotion warning
+ * at the call, and a -Wfloat-conversion/-Wconversion warning on the
+ * implicit narrowing back to BLAS_REAL. Every call site operating on
+ * a BLAS_REAL value should use these macros instead of fabs()/sqrt()
+ * directly, so the single-precision build actually stays in float.
+ */
+#if defined(BLAS_USE_FLOAT)
+    #define BLAS_FABS(x)  fabsf(x)
+    #define BLAS_SQRT(x)  sqrtf(x)
+#else
+    #define BLAS_FABS(x)  fabs(x)
+    #define BLAS_SQRT(x)  sqrt(x)
 #endif
 
 /**

@@ -31,8 +31,13 @@
 static int g_failures = 0;
 static int g_checks    = 0;
 
-#define ABS_TOL 1e-9
-#define REL_TOL 1e-9
+#if defined(BLAS_USE_FLOAT)
+    #define ABS_TOL 1e-5
+    #define REL_TOL 1e-5
+#else
+    #define ABS_TOL 1e-9
+    #define REL_TOL 1e-9
+#endif
 
 static void report(int passed, const char *name, double got, double expected)
 {

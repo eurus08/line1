@@ -14,22 +14,40 @@
  * Coverage (per build plan step 3.4):
  *   1. Known-answer tests (hand-computed, e.g. 3-4-5 triangle)
  *   2. Edge cases: length-1, zero vector, stride != 1 (incl. negative), n <= 0
- *   3. Overflow test: large values (~1e200) that would overflow a naive
+ *   3. Overflow test: large values that would overflow a naive
  *      sum-of-squares but must NOT overflow under the scaled algorithm
- *   4. Underflow test: small values (~1e-200) that would vanish under a
+ *   4. Underflow test: small values that would vanish under a
  *      naive sum-of-squares but must be recovered correctly
  *   5. Precision test vs a long double reference (well-conditioned case)
  *
  * IMPORTANT — why overflow/underflow checks use an ANALYTICAL reference,
  * not a long-double recomputation of sum-of-squares:
- *   For x[i] = 1e200, squaring it is 1e400, which overflows even long
- *   double (x86-64 extended precision tops out around 1e4932 in range,
- *   so 1e400 alone doesn't overflow long double, but using a naive sum
- *   of squares would defeat the entire purpose of this test — we want
- *   to confirm nrm2 matches a hand-derived analytical answer, not a
- *   "less naive but still naive" approach). For vectors built entirely
- *   from copies of one value v, ||x|| = |v| * sqrt(n) exactly — that
- *   closed form is the reference here, independent of squaring.
+ *   For x[i] = 1e200 (the double-precision magnitude used below), squaring
+ *   it is 1e400, which overflows even long double (x86-64 extended
+ *   precision tops out around 1e4932 in range, so 1e400 alone doesn't
+ *   overflow long double, but using a naive sum of squares would defeat
+ *   the entire purpose of this test — we want to confirm nrm2 matches a
+ *   hand-derived analytical answer, not a "less naive but still naive"
+ *   approach). For vectors built entirely from copies of one value v,
+ *   ||x|| = |v| * sqrt(n) exactly — that closed form is the reference
+ *   here, independent of squaring.
+ *
+ * IMPORTANT — why the overflow/underflow magnitudes and the tolerances
+ * are precision-dependent (see OVERFLOW_V / UNDERFLOW_V / ABS_TOL /
+ * REL_TOL below):
+ *   1e200 cast to a 32-bit float overflows to +Inf immediately, at the
+ *   test's own input construction, before blas_nrm2 ever runs — every
+ *   check in this file would then be exercising Inf-arithmetic garbage,
+ *   not the scaled algorithm under test. Symmetrically, 1e-200 cast to
+ *   float underflows to exactly 0.0f on input. Both constants are
+ *   rescaled for BLAS_USE_FLOAT to values that are themselves
+ *   representable in float but still overflow/underflow when naively
+ *   squared -- preserving the actual point of the test. The tolerances
+ *   are similarly loosened for float: float has roughly 7 significant
+ *   decimal digits (FLT_EPSILON ~1.19e-7) against double's ~16
+ *   (DBL_EPSILON ~2.22e-16), so a tolerance tight enough to be
+ *   meaningful for double will fail every float build regardless of
+ *   correctness.
  *
  * IMPORTANT — why isnan()/isinf() are avoided for verification:
  *   As established in test_scal.c, -ffast-math implies
@@ -53,8 +71,29 @@
 static int g_failures = 0;
 static int g_checks    = 0;
 
-#define ABS_TOL 1e-9
-#define REL_TOL 1e-9
+#if defined(BLAS_USE_FLOAT)
+    #define ABS_TOL 1e-5
+    #define REL_TOL 1e-5
+#else
+    #define ABS_TOL 1e-9
+    #define REL_TOL 1e-9
+#endif
+
+/* Overflow/underflow test magnitudes -- see file header comment for why
+ * these must be precision-dependent rather than a single shared 1e200 /
+ * 1e-200 constant. */
+#if defined(BLAS_USE_FLOAT)
+    /* 1e30 is safely representable in float (FLT_MAX ~3.4e38), but its
+     * square (1e60) overflows a naive sum-of-squares. */
+    #define OVERFLOW_V  1e30
+    /* 1e-30 is safely representable in float (FLT_MIN normal ~1.18e-38),
+     * but its square (1e-60) underflows even float's subnormal range
+     * (min subnormal ~1.4e-45). */
+    #define UNDERFLOW_V 1e-30
+#else
+    #define OVERFLOW_V  1e200
+    #define UNDERFLOW_V 1e-200
+#endif
 
 static void report(int passed, const char *name, double got, double expected)
 {
@@ -192,8 +231,9 @@ static void test_edge_cases(void)
 /* ------------------------------------------------------------------ */
 
 /*
- * x[i] = 1e200 for all i. A naive sum-of-squares computes (1e200)^2 =
- * 1e400, which overflows to +Inf in double precision (max ~1.8e308).
+ * x[i] = ~1e200 (double) / ~1e30 (float) for all i -- see OVERFLOW_V
+ * above. A naive sum-of-squares computes v^2, which overflows to +Inf
+ * in the working precision (double max ~1.8e308, float max ~3.4e38).
  * The scaled algorithm in nrm2.c must avoid this entirely.
  *
  * Analytical reference: for a vector of n identical elements v,
@@ -201,11 +241,11 @@ static void test_edge_cases(void)
  */
 static void test_overflow(void)
 {
-    printf("-- overflow test (large values, ~1e200) --\n");
+    printf("-- overflow test (large values, ~%g) --\n", (double)OVERFLOW_V);
 
     enum { N = 5 };
     BLAS_REAL x[N];
-    const BLAS_REAL v = (BLAS_REAL)1e200;
+    const BLAS_REAL v = (BLAS_REAL)OVERFLOW_V;
     for (int i = 0; i < N; i++) {
         x[i] = v;
     }
@@ -233,7 +273,7 @@ static void test_overflow(void)
     report(fabs((double)result) <= DBL_MAX, "nrm2 overflow test produces a finite result",
            (double)result, expected);
 
-    check_rel("nrm2([1e200]*5) matches analytical sqrt(5)*1e200",
+    check_rel("nrm2(overflow-scale vector) matches analytical |v|*sqrt(5)",
               (double)result, expected, REL_TOL);
 }
 
@@ -242,21 +282,23 @@ static void test_overflow(void)
 /* ------------------------------------------------------------------ */
 
 /*
- * x[i] = 1e-200 for all i. A naive sum-of-squares computes (1e-200)^2 =
- * 1e-400, which underflows to exactly 0.0 in double precision (min
- * normal ~2.2e-308, min subnormal ~4.9e-324 — 1e-400 is unrepresentable
- * either way). The scaled algorithm must recover the correct non-zero
- * answer by factoring out the scale before squaring.
+ * x[i] = ~1e-200 (double) / ~1e-30 (float) for all i -- see UNDERFLOW_V
+ * above. A naive sum-of-squares computes v^2, which underflows to
+ * exactly 0.0 in the working precision (double: min normal ~2.2e-308,
+ * min subnormal ~4.9e-324; float: min normal ~1.18e-38, min subnormal
+ * ~1.4e-45 -- v^2 is unrepresentable either way, in both precisions).
+ * The scaled algorithm must recover the correct non-zero answer by
+ * factoring out the scale before squaring.
  *
  * Analytical reference: same closed form as the overflow test.
  */
 static void test_underflow(void)
 {
-    printf("-- underflow test (small values, ~1e-200) --\n");
+    printf("-- underflow test (small values, ~%g) --\n", (double)UNDERFLOW_V);
 
     enum { N = 7 };
     BLAS_REAL x[N];
-    const BLAS_REAL v = (BLAS_REAL)1e-200;
+    const BLAS_REAL v = (BLAS_REAL)UNDERFLOW_V;
     for (int i = 0; i < N; i++) {
         x[i] = v;
     }
@@ -270,7 +312,7 @@ static void test_underflow(void)
     report((double)result > 0.0, "nrm2 underflow test produces a non-zero result",
            (double)result, expected);
 
-    check_rel("nrm2([1e-200]*7) matches analytical sqrt(7)*1e-200",
+    check_rel("nrm2(underflow-scale vector) matches analytical |v|*sqrt(7)",
               (double)result, expected, REL_TOL);
 }
 

@@ -76,7 +76,8 @@
 #include "blas1/nrm2.h"
 #include "blas1/iamax.h"
 #include "blas1/types.h"
-#include <math.h>   /* fabs(), sqrt() */
+/* BLAS_FABS() / BLAS_SQRT() from types.h are precision-generic (fabs/sqrt
+ * for double, fabsf/sqrtf for float) -- see BLAS1_USE_FLOAT fix notes. */
 
 BLAS_REAL blas_nrm2(blas_int n,
                     const BLAS_REAL * BLAS_RESTRICT x, blas_int incx)
@@ -93,7 +94,7 @@ BLAS_REAL blas_nrm2(blas_int n,
      * We convert it back to a memory offset to read the actual value.
      * ------------------------------------------------------------------ */
     blas_int  k     = blas_iamax(n, x, incx);
-    BLAS_REAL scale = fabs(x[(k - 1) * incx]);
+    BLAS_REAL scale = BLAS_FABS(x[(k - 1) * incx]);
 
     /* Guard: all-zero vector (scale == 0 means every element is zero) */
     if (BLAS_UNLIKELY(scale == (BLAS_REAL)0.0)) {
@@ -131,5 +132,5 @@ BLAS_REAL blas_nrm2(blas_int n,
     }
 
     /* Undo the scaling: ||x|| = scale * sqrt( sum of scaled squares ) */
-    return scale * sqrt(sum);
+    return scale * BLAS_SQRT(sum);
 }

@@ -69,6 +69,25 @@ option(BLAS1_USE_FLOAT "Build library in single precision (float)" OFF)
 if(BLAS1_USE_FLOAT)
     message(STATUS "Precision: float (single)")
     add_compile_definitions(BLAS_USE_FLOAT)
+
+    # The AVX2 (kernel/x86) and NEON (kernel/arm) kernels are written
+    # exclusively with packed-double intrinsics (_pd / float64x2_t) and
+    # each has a compile-time #error guard that refuses to build under
+    # BLAS_USE_FLOAT. DetectArch.cmake (included above) only detects
+    # hardware/compiler *capability* -- it has no idea what precision
+    # this build wants, so it will happily select "avx2" or "neon" here
+    # even though neither kernel can actually be compiled for float.
+    # Force the generic scalar backend whenever float precision is
+    # requested, regardless of what the CPU supports, until a _ps /
+    # float32 kernel variant exists.
+    if(NOT BLAS1_SIMD_BACKEND STREQUAL "generic")
+        message(STATUS "SIMD backend forced to generic: the ${BLAS1_SIMD_BACKEND} "
+                       "kernel is double-precision only and cannot build under "
+                       "BLAS1_USE_FLOAT=ON")
+        set(BLAS1_SIMD_BACKEND "generic")
+        set(BLAS1_HAS_AVX2 FALSE)
+        set(BLAS1_HAS_NEON FALSE)
+    endif()
 else()
     message(STATUS "Precision: double (default)")
 endif()

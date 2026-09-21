@@ -28,7 +28,7 @@
 #include "blas1/mpi/mpi_types.h"
 #include "blas1/iamax.h"
 #include "blas1/types.h"
-#include <math.h>   /* fabs(), sqrt() */
+/* fabs()/sqrt() replaced by BLAS_FABS()/BLAS_SQRT() from types.h (precision-generic) */
 
 BLAS_REAL blas_mpi_nrm2(
     blas_int            n_local,
@@ -44,7 +44,7 @@ BLAS_REAL blas_mpi_nrm2(
     if (n_local > 0) {
         blas_int k = blas_iamax(n_local, x, incx);
         if (k > 0) {
-            local_scale = fabs(x[(k - 1) * incx]);
+            local_scale = BLAS_FABS(x[(k - 1) * incx]);
         }
     }
 
@@ -115,5 +115,5 @@ BLAS_REAL blas_mpi_nrm2(
     /* ------------------------------------------------------------------
      * Step 5 — undo the scaling
      * ------------------------------------------------------------------ */
-    return global_scale * sqrt(global_sum);
+    return global_scale * BLAS_SQRT(global_sum);
 }

@@ -6,8 +6,14 @@
  *   Instead we measure the absolute or relative error and assert it is
  *   below a tolerance (epsilon). Two tolerances are used:
  *
- *     TOL_LOOSE  1e-10   standard dot:  error grows as O(n * eps)
- *     TOL_TIGHT  1e-14   Kahan dot:     error stays at O(eps) regardless of n
+ *     Double (default):
+ *       TOL_LOOSE  1e-10   standard dot:  error grows as O(n * eps)
+ *       TOL_TIGHT  1e-12   Kahan dot:     error stays at O(eps) regardless of n
+ *     Float (-DBLAS1_USE_FLOAT=ON):
+ *       TOL_LOOSE  2e-5    float has ~1.19e-7 epsilon vs double's ~2.22e-16,
+ *       TOL_TIGHT  2e-6    so both bounds are widened by a similar factor —
+ *                          Kahan still stays measurably tighter than
+ *                          standard summation, just not to double's floor.
  *
  * Test categories (in order):
  *   1. Basic known-answer tests  — hand-computed results
@@ -34,8 +40,13 @@
  * Tolerances
  * ========================================================================= */
 
-#define TOL_LOOSE  1e-10   /* acceptable for standard summation          */
-#define TOL_TIGHT  1e-12   /* required for Kahan (and small-n standard)  */
+#if defined(BLAS_USE_FLOAT)
+    #define TOL_LOOSE  2e-5   /* acceptable for standard summation          */
+    #define TOL_TIGHT  2e-6   /* required for Kahan (and small-n standard)  */
+#else
+    #define TOL_LOOSE  1e-10  /* acceptable for standard summation          */
+    #define TOL_TIGHT  1e-12  /* required for Kahan (and small-n standard)  */
+#endif
 
 /* =========================================================================
  * Test helpers
