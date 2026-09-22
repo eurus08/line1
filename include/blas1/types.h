@@ -13,9 +13,11 @@
 #ifndef BLAS1_TYPES_H
 #define BLAS1_TYPES_H
 
-#include <stdint.h>   /* int64_t, int32_t */
+#include <stdint.h>   /* int64_t, int32_t, uint32_t, uint64_t */
 #include <stddef.h>   /* size_t           */
+#include <string.h>   /* memcpy() -- see blas_is_inf() below  */
 #include <math.h>     /* fabs()/fabsf(), sqrt()/sqrtf() -- see BLAS_FABS/BLAS_SQRT below */
+#include <float.h>    /* DBL_MAX, FLT_MAX -- see BLAS_REAL_MAX below */
 
 /**
  * @typedef blas_int
@@ -72,6 +74,19 @@ typedef double  blas_double;
 #endif
 
 /**
+ * @def BLAS_REAL_MAX
+ * @brief Largest finite representable BLAS_REAL value (DBL_MAX / FLT_MAX).
+ *
+ * Do NOT use this to detect "is this value infinite" (`x > BLAS_REAL_MAX`) --
+ * that comparison does not survive -ffast-math. See blas_is_inf() below.
+ */
+#if defined(BLAS_USE_FLOAT)
+    #define BLAS_REAL_MAX FLT_MAX
+#else
+    #define BLAS_REAL_MAX DBL_MAX
+#endif
+
+/**
  * @def BLAS_INLINE
  * @brief Requests aggressive inlining at the call site.
  *
@@ -85,6 +100,47 @@ typedef double  blas_double;
 #else
     #define BLAS_INLINE static inline
 #endif
+
+/**
+ * @brief Runtime-robust check for "this BLAS_REAL is +Inf or -Inf",
+ * even in a translation unit built with -ffast-math.
+ *
+ * Do NOT replace this with isinf() or a direct comparison such as
+ * `x > BLAS_REAL_MAX` or `x == x * 2` -- none of them survive
+ * -ffast-math. That flag implies -ffinite-math-only, under which the
+ * compiler is entitled to assume no floating-point value is EVER
+ * infinite. This is not just a theoretical risk: confirmed directly
+ * against this project's own Release flags (-O3 -march=native
+ * -ffast-math) by inspecting the generated assembly, GCC acts on that
+ * assumption by dead-code-eliminating an ordinary
+ * `if (x > BLAS_REAL_MAX) ...` guard entirely -- not merely folding
+ * isinf() to a constant false, but removing the branch outright, even
+ * though the runtime value genuinely is infinite.
+ *
+ * This function instead reinterprets the value's raw bits as an
+ * unsigned integer (via memcpy(), the well-defined, strict-aliasing-
+ * safe way to do this in C -- NOT a union or pointer cast) and does
+ * an ordinary INTEGER comparison against the IEEE 754 bit pattern for
+ * infinity (sign bit ignored, since +Inf and -Inf should be treated
+ * alike here). Integer comparisons are not covered by
+ * -ffinite-math-only's "assume no value is ever infinite" license --
+ * the compiler has no equivalent belief about arbitrary integers --
+ * so this check cannot be constant-folded or eliminated. Verified
+ * (again via the generated assembly, not just reasoned about) to
+ * survive this project's Release flags intact.
+ */
+BLAS_INLINE int blas_is_inf(BLAS_REAL x)
+{
+#if defined(BLAS_USE_FLOAT)
+    uint32_t bits;
+    memcpy(&bits, &x, sizeof(bits));
+    return (bits & 0x7FFFFFFFu) == 0x7F800000u;
+#else
+    uint64_t bits;
+    memcpy(&bits, &x, sizeof(bits));
+    return (bits & 0x7FFFFFFFFFFFFFFFULL) == 0x7FF0000000000000ULL;
+#endif
+}
 
 /**
  * @def BLAS_RESTRICT

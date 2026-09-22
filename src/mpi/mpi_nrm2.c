@@ -67,6 +67,31 @@ BLAS_REAL blas_mpi_nrm2(
         return (BLAS_REAL)0.0;
     }
 
+    /*
+     * Any element (on any rank) is +-Inf: global_scale itself is
+     * exactly +Inf here, for the same reason as the serial
+     * blas_nrm2() -- an infinite element dominates the MPI_MAX
+     * reduction just as it dominates blas_iamax's local search.
+     * Dividing by it in step 3 below would compute Inf/Inf == NaN for
+     * whichever rank holds that element, poisoning that rank's local
+     * sum, and then MPI_SUM in step 4 would poison every other rank's
+     * result too (NaN + anything == NaN). global_scale already IS the
+     * correct answer, so return it now, before step 3.
+     *
+     * Safe as a collective: global_scale is the output of the
+     * MPI_Allreduce above, so it is bit-identical on every rank --
+     * either all ranks take this early return, or none do. No rank
+     * can diverge into/out of the step 4 MPI_Allreduce alone.
+     *
+     * See nrm2.c / types.h's blas_is_inf() for the full reasoning
+     * (hypot()'s Inf-over-NaN precedent, and why this must be
+     * blas_is_inf() -- an integer bit-pattern check -- rather than
+     * isinf() or a `global_scale > BLAS_REAL_MAX` comparison, both of
+     * which -ffast-math is confirmed to eliminate entirely). */
+    if (blas_is_inf(global_scale)) {
+        return global_scale;
+    }
+
     /* ------------------------------------------------------------------
      * Step 3 — local sum of (x[i]/global_scale)^2, Kahan-compensated
      *

@@ -347,6 +347,102 @@ static void test_precision(void)
 }
 
 /* ------------------------------------------------------------------ */
+/*  6. Infinity handling                                                */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Regression test for a real bug: blas_nrm2({Inf, 1, 2}) used to return
+ * NaN instead of Inf.
+ *
+ * Root cause: the two-pass scaled algorithm picks scale = max(|x[i]|)
+ * in pass 1, then computes sum((x[i]/scale)^2) in pass 2. If any
+ * element is +-Inf, it dominates the max-search, so scale itself
+ * becomes +Inf -- and for that same element, x[i]/scale is Inf/Inf,
+ * which IEEE 754 defines as NaN. That NaN then poisons the entire
+ * Kahan-compensated sum, corrupting a result whose true Euclidean norm
+ * is unambiguously +Inf. nrm2.c now special-cases this (see its
+ * blas_is_inf() guard) and returns scale directly before pass 2 runs.
+ *
+ * Note this file's own isinf()/isnan() calls below are fine: test
+ * binaries are NOT built with this project's -ffast-math flags (see
+ * tests/CMakeLists.txt), so none of the -ffinite-math-only caveats
+ * documented in nrm2.c / types.h apply to this file itself -- only to
+ * the library code under test.
+ */
+static void test_infinity(void)
+{
+    printf("-- infinity test (regression: nrm2({Inf,...}) used to return NaN) --\n");
+
+    const double inf_val  =  1.0 / 0.0;
+    const double ninf_val = -1.0 / 0.0;
+    const double nan_val  =  0.0 / 0.0;
+
+    /* A single +Inf element */
+    {
+        BLAS_REAL x[3] = { (BLAS_REAL)inf_val, (BLAS_REAL)1.0, (BLAS_REAL)2.0 };
+        BLAS_REAL result = blas_nrm2(3, x, 1);
+        report(isinf((double)result) && (double)result > 0.0,
+               "nrm2({+Inf, 1, 2}) is +Inf, not NaN",
+               (double)result, inf_val);
+    }
+
+    /* A single -Inf element -- BLAS_FABS(-Inf) is +Inf, same as above */
+    {
+        BLAS_REAL x[3] = { (BLAS_REAL)ninf_val, (BLAS_REAL)1.0, (BLAS_REAL)2.0 };
+        BLAS_REAL result = blas_nrm2(3, x, 1);
+        report(isinf((double)result) && (double)result > 0.0,
+               "nrm2({-Inf, 1, 2}) is +Inf, not NaN",
+               (double)result, inf_val);
+    }
+
+    /* Multiple Inf elements, mixed signs */
+    {
+        BLAS_REAL x[3] = { (BLAS_REAL)inf_val, (BLAS_REAL)inf_val, (BLAS_REAL)ninf_val };
+        BLAS_REAL result = blas_nrm2(3, x, 1);
+        report(isinf((double)result) && (double)result > 0.0,
+               "nrm2({+Inf, +Inf, -Inf}) is +Inf",
+               (double)result, inf_val);
+    }
+
+    /* Strided: the Inf is not at index 0 and not contiguous */
+    {
+        BLAS_REAL x[5] = { (BLAS_REAL)inf_val, (BLAS_REAL)99.0,
+                           (BLAS_REAL)1.0,     (BLAS_REAL)99.0,
+                           (BLAS_REAL)2.0 };
+        BLAS_REAL result = blas_nrm2(3, x, 2);
+        report(isinf((double)result) && (double)result > 0.0,
+               "nrm2 with stride != 1 still returns +Inf for an Inf element",
+               (double)result, inf_val);
+    }
+
+    /*
+     * Inf together with NaN: per the C99/IEEE 754 special-case rule
+     * for hypot() (hypot(+-inf, y) == +inf even if y is NaN),
+     * infinity takes precedence over NaN. blas_nrm2's Inf guard fires
+     * before pass 2 ever sees the NaN element, so this is expected
+     * (and consistent) behavior, not an oversight.
+     */
+    {
+        BLAS_REAL x[3] = { (BLAS_REAL)inf_val, (BLAS_REAL)nan_val, (BLAS_REAL)2.0 };
+        BLAS_REAL result = blas_nrm2(3, x, 1);
+        report(isinf((double)result) && (double)result > 0.0,
+               "nrm2({+Inf, NaN, 2}) is +Inf (hypot's Inf-over-NaN precedent)",
+               (double)result, inf_val);
+    }
+
+    /* NaN with NO Inf present: this should still be NaN -- confirms
+     * the Inf guard doesn't overreach into misclassifying plain NaN
+     * propagation as something to special-case. */
+    {
+        BLAS_REAL x[3] = { (BLAS_REAL)nan_val, (BLAS_REAL)1.0, (BLAS_REAL)2.0 };
+        BLAS_REAL result = blas_nrm2(3, x, 1);
+        report(isnan((double)result),
+               "nrm2({NaN, 1, 2}) (no Inf present) is still NaN",
+               (double)result, nan_val);
+    }
+}
+
+/* ------------------------------------------------------------------ */
 /*  main                                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -359,6 +455,7 @@ int main(void)
     test_overflow();
     test_underflow();
     test_precision();
+    test_infinity();
 
     printf("\n%d/%d checks passed\n", g_checks - g_failures, g_checks);
 

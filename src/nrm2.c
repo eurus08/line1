@@ -96,6 +96,46 @@ BLAS_REAL blas_nrm2(blas_int n,
     blas_int  k     = blas_iamax(n, x, incx);
     BLAS_REAL scale = BLAS_FABS(x[(k - 1) * incx]);
 
+    /*
+     * Guard: any element is +-Inf.
+     *
+     * An infinite element's magnitude dominates every finite element,
+     * so blas_iamax's max-|x[i]| search always selects it -- meaning
+     * scale itself is exactly +Inf here (BLAS_FABS never produces
+     * -Inf). Continuing into pass 2 below would divide by that Inf,
+     * and for the Inf element itself compute Inf/Inf == NaN, which
+     * then poisons the Kahan-compensated sum with a NaN -- producing
+     * a NaN nrm2() result for a vector whose true Euclidean norm is
+     * unambiguously +Inf.
+     *
+     * scale already equals the correct answer in this case, so return
+     * it directly rather than dividing by it.
+     *
+     * This matches the C99/IEEE 754 special-case rule for hypot():
+     * hypot(+-inf, y) == +inf even when y is NaN -- infinity takes
+     * precedence over NaN. So if this vector also contains a NaN
+     * elsewhere, returning +Inf here (rather than propagating that
+     * NaN) is consistent with that standard precedent, not an ad hoc
+     * choice.
+     *
+     * Uses blas_is_inf() (types.h), NOT isinf() and NOT a direct
+     * comparison like `scale > BLAS_REAL_MAX`. Both of those are
+     * silently defeated by -ffast-math (this project's Release
+     * build), which implies -ffinite-math-only: the compiler is
+     * entitled to assume no floating-point value is ever infinite,
+     * and confirmed (by inspecting the generated assembly, not just
+     * reasoned about) to act on that assumption here by
+     * dead-code-eliminating a `scale > BLAS_REAL_MAX` guard entirely
+     * under this project's own Release flags -- even though the
+     * runtime value genuinely is infinite. blas_is_inf() survives
+     * this because it operates on the value's raw integer bit
+     * pattern, which -ffinite-math-only has no license to assume
+     * anything about.
+     */
+    if (BLAS_UNLIKELY(blas_is_inf(scale))) {
+        return scale;
+    }
+
     /* Guard: all-zero vector (scale == 0 means every element is zero) */
     if (BLAS_UNLIKELY(scale == (BLAS_REAL)0.0)) {
         return (BLAS_REAL)0.0;
