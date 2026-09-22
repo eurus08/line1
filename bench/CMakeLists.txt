@@ -52,7 +52,15 @@ target_include_directories(bench_dot PRIVATE
 # might reasonably run
 #   cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBLAS1_BUILD_BENCH=ON
 # and would still expect real numbers out of `make bench`.
+# target_apply_arch_flags() gives this executable the same USE_AVX2 /
+# USE_NEON / USE_GENERIC define DetectArch.cmake selected for the
+# library itself, purely so bench_dot.c can print which backend is
+# actually active in its banner. This is why the DetectArch bug (fixed
+# separately -- see cmake/DetectArch.cmake) went unnoticed for so long
+# in the committed results/ numbers: nothing benchmark-side ever
+# reported which kernel was really running.
 target_apply_compiler_flags(bench_dot)
+target_apply_arch_flags(bench_dot)
 target_compile_options(bench_dot PRIVATE
     -O3 -march=native -funroll-loops -fomit-frame-pointer -ffast-math
 )
@@ -71,6 +79,7 @@ target_include_directories(bench_axpy PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_apply_compiler_flags(bench_axpy)
+target_apply_arch_flags(bench_axpy)
 target_compile_options(bench_axpy PRIVATE
     -O3 -march=native -funroll-loops -fomit-frame-pointer -ffast-math
 )

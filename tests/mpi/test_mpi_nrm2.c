@@ -19,7 +19,33 @@
 #include <math.h>
 #include <stdio.h>
 
-#define TOL_LOOSE 1e-9
+/* Precision-aware tolerance -- mirrors tests/test_nrm2.c's REL_TOL
+ * exactly. Float has roughly 7 significant decimal digits (FLT_EPSILON
+ * ~1.19e-7) against double's ~16 (DBL_EPSILON ~2.22e-16), so a
+ * tolerance tight enough to be meaningful for double fails every float
+ * build regardless of correctness -- see tests/test_nrm2.c's file
+ * header for the fuller explanation. */
+#if defined(BLAS_USE_FLOAT)
+    #define TOL_LOOSE 1e-5
+#else
+    #define TOL_LOOSE 1e-9
+#endif
+
+/* Overflow-test magnitude for Test 2 below -- also precision-dependent,
+ * same reasoning as tests/test_nrm2.c's OVERFLOW_V: 1e200 cast to a
+ * 32-bit float overflows to +Inf immediately, at the test's own input
+ * construction, before blas_mpi_nrm2 ever runs -- which would turn
+ * Test 2 into a redundant Inf-vs-Inf check (already covered by the
+ * serial suite's dedicated infinity tests) instead of actually
+ * exercising the scaled algorithm's overflow avoidance. 1e30 is safely
+ * representable in float (FLT_MAX ~3.4e38), but its square (1e60)
+ * still overflows a naive sum-of-squares, preserving the point of the
+ * test. */
+#if defined(BLAS_USE_FLOAT)
+    #define OVERFLOW_V 1e30
+#else
+    #define OVERFLOW_V 1e200
+#endif
 
 static int g_tests  = 0;
 static int g_failed = 0;
@@ -28,6 +54,24 @@ static int g_rank    = 0;
 static void check_rel(const char *name, BLAS_REAL result, BLAS_REAL expected, BLAS_REAL tol)
 {
     g_tests++;
+
+    /* An exact Inf-vs-Inf (same sign) match is a correct answer that
+     * the relative-error formula below can't score (Inf - Inf is NaN,
+     * and Inf/Inf in the scale-normalized err is NaN too). Test
+     * binaries here are not built with this project's -ffast-math
+     * flags (see tests/mpi/CMakeLists.txt), so isinf() is safe to use
+     * directly in this file even though the library code under test
+     * has to avoid it -- see tests/test_nrm2.c's own note on this for
+     * why. */
+    if (isinf((double)result) && isinf((double)expected) &&
+        ((double)result > 0) == ((double)expected > 0)) {
+        if (g_rank == 0) {
+            printf("  PASS  %-45s  (exact %s match)\n", name,
+                   (double)result > 0 ? "+Inf" : "-Inf");
+        }
+        return;
+    }
+
     BLAS_REAL scale = fmax(fabs(result), fabs(expected));
     BLAS_REAL err = (scale == 0.0) ? fabs(result - expected) : fabs(result - expected) / scale;
     int finite = isfinite((double)result);
@@ -98,23 +142,28 @@ int main(int argc, char **argv)
     }
 
     /* ---------------------------------------------------------------
-     * Test 2 — overflow-prone: one rank alone holds a 1e200 value,
-     * everyone else holds zeros. A naive "sum of squares" approach
-     * would compute (1e200)^2 = 1e400, which overflows double's
-     * range and becomes Inf. The scaled two-collective algorithm
-     * must still return exactly 1e200.
+     * Test 2 — overflow-prone: one rank alone holds an OVERFLOW_V
+     * value, everyone else holds zeros. A naive "sum of squares"
+     * approach would square it into a value that overflows the
+     * working precision's range and becomes Inf. The scaled
+     * two-collective algorithm must still return exactly OVERFLOW_V.
+     * OVERFLOW_V itself is precision-dependent (see its #define
+     * above, and tests/test_nrm2.c's fuller explanation) so this
+     * stays a genuine overflow-avoidance test under BLAS_USE_FLOAT
+     * too, rather than degenerating into an Inf-vs-Inf check already
+     * covered by the serial suite's dedicated infinity tests.
      * --------------------------------------------------------------- */
     {
         blas_int n_local = 2;
         BLAS_REAL x[2];
         if (rank == 0) {
-            x[0] = 1.0e200; x[1] = 0.0;
+            x[0] = (BLAS_REAL)OVERFLOW_V; x[1] = 0.0;
         } else {
             x[0] = 0.0; x[1] = 0.0;
         }
 
         BLAS_REAL result = blas_mpi_nrm2(n_local, x, 1, MPI_COMM_WORLD);
-        check_rel("nrm2 overflow-prone value 1e200", result, (BLAS_REAL)1.0e200, TOL_LOOSE);
+        check_rel("nrm2 overflow-prone value", result, (BLAS_REAL)OVERFLOW_V, TOL_LOOSE);
     }
 
     /* ---------------------------------------------------------------

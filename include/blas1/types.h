@@ -53,8 +53,7 @@ typedef double  blas_double;
 
 /**
  * @def BLAS_FABS
- * @def BLAS_SQRT
- * @brief Precision-generic absolute value / square root on BLAS_REAL.
+ * @brief Precision-generic absolute value on BLAS_REAL.
  *
  * <math.h>'s fabs()/sqrt() take and return @c double; calling them
  * directly on a @c float (BLAS_REAL when BLAS_USE_FLOAT is set)
@@ -62,8 +61,21 @@ typedef double  blas_double;
  * back to float on return -- extra work, a -Wdouble-promotion warning
  * at the call, and a -Wfloat-conversion/-Wconversion warning on the
  * implicit narrowing back to BLAS_REAL. Every call site operating on
- * a BLAS_REAL value should use these macros instead of fabs()/sqrt()
- * directly, so the single-precision build actually stays in float.
+ * a BLAS_REAL value should use this (and ::BLAS_SQRT) instead of
+ * fabs()/sqrt() directly, so the single-precision build actually stays
+ * in float.
+ *
+ * @param x A @c BLAS_REAL value.
+ * @return  The absolute value of @p x, as a @c BLAS_REAL.
+ */
+/**
+ * @def BLAS_SQRT
+ * @brief Precision-generic square root on BLAS_REAL.
+ *
+ * See ::BLAS_FABS immediately above for why this exists.
+ *
+ * @param x A @c BLAS_REAL value.
+ * @return  The square root of @p x, as a @c BLAS_REAL.
  */
 #if defined(BLAS_USE_FLOAT)
     #define BLAS_FABS(x)  fabsf(x)
@@ -128,6 +140,10 @@ typedef double  blas_double;
  * so this check cannot be constant-folded or eliminated. Verified
  * (again via the generated assembly, not just reasoned about) to
  * survive this project's Release flags intact.
+ *
+ * @param x The value to test.
+ * @return  Non-zero if @p x is +Inf or -Inf, zero otherwise (including
+ *          for NaN and every finite value).
  */
 BLAS_INLINE int blas_is_inf(BLAS_REAL x)
 {
@@ -161,6 +177,12 @@ BLAS_INLINE int blas_is_inf(BLAS_REAL x)
  * and immediately stepping to a negative (out-of-bounds) offset.
  *
  * Only meaningful for callers that have already validated n > 0.
+ *
+ * @param n    Element count. Must be > 0 -- not validated here.
+ * @param incx The stride, positive, negative, or (degenerately) zero.
+ * @return     The 0-based offset from the caller's pointer at which
+ *             to start iterating: 0 for @p incx >= 0, or the offset of
+ *             the last logical element for @p incx < 0.
  */
 BLAS_INLINE blas_int blas_stride_start(blas_int n, blas_int incx)
 {

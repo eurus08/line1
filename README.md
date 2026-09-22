@@ -108,17 +108,17 @@ Testing philosophy: floating-point results are never compared with `==`. Every t
 
 ### Serial
 
-Measured with `bench_dot`/`bench_axpy` (100 trials per size, median reported; full output in `results/`). `dot` is 2 FLOPs and 16 bytes per element; `axpy` is 2 FLOPs and 24 bytes:
+Measured with `bench_dot`/`bench_axpy` (100 trials per size, median reported; full output in `results/`), on the AVX2 backend (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DBLAS1_BUILD_BENCH=ON`, default `BLAS1_STRICT_IEEE=ON` — the AVX2 kernels use explicit intrinsics rather than auto-vectorization, so they don't depend on `-ffast-math` for their throughput). `dot` is 2 FLOPs and 16 bytes per element; `axpy` is 2 FLOPs and 24 bytes:
 
-> **Re-measure before trusting these:** a bug in `cmake/DetectArch.cmake` (fixed — see commit) meant `BLAS1_HAS_AVX2`/`BLAS1_HAS_NEON` were pre-set before the compiler-support check ran, which silently skipped the check and forced the generic scalar fallback on every build, this one included. The table below was almost certainly measured on the scalar path, not AVX2. Re-run `make bench` now that detection actually works and replace these numbers.
+*(Re-measured after fixing a `cmake/DetectArch.cmake` bug that had silently forced every build, including the numbers previously shown here, onto the generic scalar fallback instead of AVX2 — see git history. The small-`n` GFlop/s jump below versus that earlier table is that fix taking effect.)*
 
 | n | dot warm GB/s | dot warm GFlop/s | axpy warm GB/s | axpy warm GFlop/s |
 |---:|---:|---:|---:|---:|
-| 1,000 | 61.1 | 7.63 | 180.5 | 15.04 |
-| 16,000 | 66.2 | 8.27 | 122.0 | 10.17 |
-| 1,000,000 | 20.7 | 2.59 | 40.7 | 3.39 |
-| 16,000,000 | 22.5 | 2.81 | 23.5 | 1.96 |
-| 100,000,000 | 24.0 | 3.00 | 28.7 | 2.39 |
+| 1,000 | 95.8 | 11.98 | 176.5 | 14.71 |
+| 16,000 | 85.4 | 10.67 | 100.5 | 8.37 |
+| 1,000,000 | 28.7 | 3.59 | 47.6 | 3.97 |
+| 16,000,000 | 23.1 | 2.89 | 28.9 | 2.41 |
+| 100,000,000 | 22.0 | 2.76 | 27.1 | 2.26 |
 
 **Key insight, and the reason the numbers plateau instead of climbing:** BLAS Level 1 is almost always memory-bandwidth-limited, not compute-limited. There's very little arithmetic per element — the bottleneck is how fast data can move from DRAM, not how fast the CPU can multiply. This single fact shapes most of the design decisions in this library (the SIMD kernels, for instance, help most at small-to-medium sizes still resident in cache; at large `n`, moving to AVX2 barely matters because the memory bus, not the ALU, is already the limit).
 

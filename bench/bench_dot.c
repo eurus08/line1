@@ -202,10 +202,19 @@ int main(void)
 
     printf("=================================================================="
            "===========\n");
-    printf(" blas_dot benchmark -- Phase 4 baseline\n");
+    printf(" blas_dot benchmark\n");
     printf(" Precision: %s   Trials per size: %d (median reported)\n",
            (sizeof(BLAS_REAL) == sizeof(double)) ? "double" : "float",
            BENCH_TRIALS);
+    printf(" SIMD backend: %s\n",
+#if defined(USE_AVX2)
+           "avx2"
+#elif defined(USE_NEON)
+           "neon"
+#else
+           "generic (scalar)"
+#endif
+    );
     printf("=================================================================="
            "===========\n");
 
