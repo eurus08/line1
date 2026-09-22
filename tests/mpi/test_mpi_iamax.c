@@ -13,8 +13,8 @@
  * handling across ranks.
  */
 
-#include "blas1/mpi/mpi_iamax.h"
-#include "blas1/types.h"
+#include "line1/mpi/mpi_iamax.h"
+#include "line1/types.h"
 
 #include <mpi.h>
 #include <math.h>

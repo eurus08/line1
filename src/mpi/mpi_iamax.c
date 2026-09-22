@@ -20,10 +20,10 @@
  *   MPI programs generally -- not something specific to this file.
  */
 
-#include "blas1/mpi/mpi_iamax.h"
-#include "blas1/mpi/mpi_types.h"
-#include "blas1/iamax.h"
-#include "blas1/types.h"
+#include "line1/mpi/mpi_iamax.h"
+#include "line1/mpi/mpi_types.h"
+#include "line1/iamax.h"
+#include "line1/types.h"
 /* fabs() replaced by BLAS_FABS() from types.h (precision-generic) */
 
 blas_mpi_iamax_result_t blas_mpi_iamax(

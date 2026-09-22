@@ -21,13 +21,13 @@
  * - Kahan compensation in step 3 mirrors nrm2.c's pass 2 exactly,
  *   same -ffast-math caveat applies (see nrm2.c): strict IEEE 754
  *   (no -ffast-math) is this project's DEFAULT build for exactly
- *   this reason; -DBLAS1_STRICT_IEEE=OFF opts out.
+ *   this reason; -DLINE1_STRICT_IEEE=OFF opts out.
  */
 
-#include "blas1/mpi/mpi_nrm2.h"
-#include "blas1/mpi/mpi_types.h"
-#include "blas1/iamax.h"
-#include "blas1/types.h"
+#include "line1/mpi/mpi_nrm2.h"
+#include "line1/mpi/mpi_types.h"
+#include "line1/iamax.h"
+#include "line1/types.h"
 /* fabs()/sqrt() replaced by BLAS_FABS()/BLAS_SQRT() from types.h (precision-generic) */
 
 BLAS_REAL blas_mpi_nrm2(

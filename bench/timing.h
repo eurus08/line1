@@ -19,8 +19,8 @@
  * extra link step.
  */
 
-#ifndef BLAS1_BENCH_TIMING_H
-#define BLAS1_BENCH_TIMING_H
+#ifndef LINE1_BENCH_TIMING_H
+#define LINE1_BENCH_TIMING_H
 
 /*
  * Feature-test macro note:
@@ -39,7 +39,7 @@
 
 #include <time.h>
 #include <stdlib.h>   /* qsort */
-#include "blas1/types.h"  /* BLAS_INLINE */
+#include "line1/types.h"  /* BLAS_INLINE */
 
 /* ---------------------------------------------------------------------
  * bench_now() — current monotonic time, in seconds, as a double.
@@ -92,4 +92,4 @@ BLAS_INLINE double bench_median(double *samples, int count)
     return 0.5 * (samples[count / 2 - 1] + samples[count / 2]);
 }
 
-#endif /* BLAS1_BENCH_TIMING_H */
+#endif /* LINE1_BENCH_TIMING_H */

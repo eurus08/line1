@@ -58,8 +58,8 @@
  *   Same convention as the rest of the library. Unit-stride fast path
  *   for auto-vectorisation; general strided path for everything else.
  */
-#include "blas1/asum.h"
-#include "blas1/types.h"
+#include "line1/asum.h"
+#include "line1/types.h"
 /* fabs() replaced by BLAS_FABS() from types.h (precision-generic) */
 
 BLAS_REAL blas_asum(blas_int n,

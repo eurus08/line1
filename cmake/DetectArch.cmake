@@ -3,7 +3,7 @@
 # Detects the host CPU architecture and sets compile definitions so
 # the right SIMD kernel is selected at build time (Phase 5).
 #
-# What it sets (as preprocessor defines on the blas1 target):
+# What it sets (as preprocessor defines on the line1 target):
 #
 #   USE_AVX2   — x86_64 CPU with AVX2 + FMA support (Intel Haswell+,
 #                AMD Ryzen+). Processes 4 doubles / 8 floats per cycle.
@@ -25,26 +25,26 @@
 # ------------------------------------------------------------------ #
 #  Guard                                                               #
 # ------------------------------------------------------------------ #
-if(DEFINED BLAS1_DETECT_ARCH_INCLUDED)
+if(DEFINED LINE1_DETECT_ARCH_INCLUDED)
     return()
 endif()
-set(BLAS1_DETECT_ARCH_INCLUDED TRUE)
+set(LINE1_DETECT_ARCH_INCLUDED TRUE)
 
 include(CheckCSourceCompiles)   # built-in CMake module for compile tests
 
 # ------------------------------------------------------------------ #
 #  Stage 1 — Identify architecture family                              #
 # ------------------------------------------------------------------ #
-set(BLAS1_ARCH_X86   FALSE)
-set(BLAS1_ARCH_ARM   FALSE)
+set(LINE1_ARCH_X86   FALSE)
+set(LINE1_ARCH_ARM   FALSE)
 
 message(STATUS "Detecting CPU architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686|i386")
-    set(BLAS1_ARCH_X86 TRUE)
+    set(LINE1_ARCH_X86 TRUE)
     message(STATUS "Architecture family: x86 / x86_64")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|armv8|ARM64")
-    set(BLAS1_ARCH_ARM TRUE)
+    set(LINE1_ARCH_ARM TRUE)
     message(STATUS "Architecture family: ARM / AArch64")
 else()
     message(STATUS "Architecture family: unknown (${CMAKE_SYSTEM_PROCESSOR}) — using generic fallback")
@@ -60,7 +60,7 @@ endif()
 #  Combined with -march=native, the CPU will support them too.        #
 # ------------------------------------------------------------------ #
 
-# NOTE: Do NOT pre-set BLAS1_HAS_AVX2 / BLAS1_HAS_NEON here (e.g. to
+# NOTE: Do NOT pre-set LINE1_HAS_AVX2 / LINE1_HAS_NEON here (e.g. to
 # FALSE) before calling check_c_source_compiles() below. That macro's
 # implementation is effectively:
 #
@@ -78,7 +78,7 @@ endif()
 # check instead of set()-ing it beforehand.
 
 # --- AVX2 + FMA test (x86 only) ------------------------------------ #
-if(BLAS1_ARCH_X86)
+if(LINE1_ARCH_X86)
 
     # Save current flags, temporarily add AVX2 flag for the test
     set(_SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
@@ -95,12 +95,12 @@ if(BLAS1_ARCH_X86)
             (void)c;
             return 0;
         }
-    " BLAS1_HAS_AVX2)
+    " LINE1_HAS_AVX2)
 
     # Restore original flags
     set(CMAKE_C_FLAGS "${_SAVED_CMAKE_C_FLAGS}")
 
-    if(BLAS1_HAS_AVX2)
+    if(LINE1_HAS_AVX2)
         message(STATUS "SIMD support: AVX2 + FMA detected")
     else()
         message(STATUS "SIMD support: AVX2 not available — using generic fallback")
@@ -109,7 +109,7 @@ if(BLAS1_ARCH_X86)
 endif()
 
 # --- NEON test (ARM only) ------------------------------------------ #
-if(BLAS1_ARCH_ARM)
+if(LINE1_ARCH_ARM)
 
     check_c_source_compiles("
         #include <arm_neon.h>
@@ -121,9 +121,9 @@ if(BLAS1_ARCH_ARM)
             (void)c;
             return 0;
         }
-    " BLAS1_HAS_NEON)
+    " LINE1_HAS_NEON)
 
-    if(BLAS1_HAS_NEON)
+    if(LINE1_HAS_NEON)
         message(STATUS "SIMD support: NEON (AArch64) detected")
     else()
         message(STATUS "SIMD support: NEON not available — using generic fallback")
@@ -134,15 +134,15 @@ endif()
 # ------------------------------------------------------------------ #
 #  Stage 3 — Summarise result                                          #
 # ------------------------------------------------------------------ #
-set(BLAS1_SIMD_BACKEND "generic")
+set(LINE1_SIMD_BACKEND "generic")
 
-if(BLAS1_HAS_AVX2)
-    set(BLAS1_SIMD_BACKEND "avx2")
-elseif(BLAS1_HAS_NEON)
-    set(BLAS1_SIMD_BACKEND "neon")
+if(LINE1_HAS_AVX2)
+    set(LINE1_SIMD_BACKEND "avx2")
+elseif(LINE1_HAS_NEON)
+    set(LINE1_SIMD_BACKEND "neon")
 endif()
 
-message(STATUS "SIMD backend selected: ${BLAS1_SIMD_BACKEND}")
+message(STATUS "SIMD backend selected: ${LINE1_SIMD_BACKEND}")
 
 # ------------------------------------------------------------------ #
 #  Public function                                                      #
@@ -154,12 +154,12 @@ message(STATUS "SIMD backend selected: ${BLAS1_SIMD_BACKEND}")
 # ------------------------------------------------------------------ #
 function(target_apply_arch_flags target)
 
-    if(BLAS1_HAS_AVX2)
+    if(LINE1_HAS_AVX2)
         target_compile_definitions(${target} PRIVATE USE_AVX2=1)
         # AVX2 requires these flags to actually emit the instructions
         target_compile_options(${target} PRIVATE -mavx2 -mfma)
 
-    elseif(BLAS1_HAS_NEON)
+    elseif(LINE1_HAS_NEON)
         target_compile_definitions(${target} PRIVATE USE_NEON=1)
         # NEON is always available on AArch64 — no extra flag needed
 

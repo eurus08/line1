@@ -4,10 +4,10 @@
  * @brief Dot product of two vectors.
  */
 
-#ifndef BLAS1_DOT_H
-#define BLAS1_DOT_H
+#ifndef LINE1_DOT_H
+#define LINE1_DOT_H
 
-#include "blas1/types.h"
+#include "line1/types.h"
 
 /**
  * @ingroup serial
@@ -52,7 +52,7 @@ BLAS_REAL blas_dot(
  *       IEEE 754 (no @c -ffast-math) is this project's DEFAULT build
  *       for exactly this reason; the compensation survives as written
  *       unless you explicitly opt in to @c -ffast-math with
- *       @c -DBLAS1_STRICT_IEEE=OFF.
+ *       @c -DLINE1_STRICT_IEEE=OFF.
  *
  * @note Overflow: once the running sum has overflowed to &plusmn;Inf,
  *       this falls back to plain addition rather than trusting the
@@ -79,4 +79,4 @@ BLAS_REAL blas_dot_kahan(
     blas_int            incy
 );
 
-#endif /* BLAS1_DOT_H */
+#endif /* LINE1_DOT_H */

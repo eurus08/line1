@@ -7,14 +7,14 @@
 # It's registered with CTest the same way bench_dot/bench_axpy are
 # (Phase 4 pattern: name begins "bench" so `make bench`'s
 # `ctest -R bench -V` picks it up), but that registration is only a
-# SMOKE TEST at BLAS1_MPI_TEST_NPROCS ranks with a modest fixed size
+# SMOKE TEST at LINE1_MPI_TEST_NPROCS ranks with a modest fixed size
 # -- confirming the tool runs and produces sane numbers. The actual
 # strong/weak SCALING STUDIES (running this at many different rank
 # counts and assembling a table) are done by run_scaling.sh, invoked
 # manually -- CTest tests are not the right tool for an open-ended
 # parameter sweep across process counts.
 #
-# Links against blas1_mpi (brings in blas1 + MPI::MPI_C transitively,
+# Links against line1_mpi (brings in line1 + MPI::MPI_C transitively,
 # same as the MPI test executables in tests/mpi/CMakeLists.txt).
 # Needs bench/ on its include path too, for timing.h (this file lives
 # in bench/mpi/, one directory below bench/ where timing.h is kept —
@@ -25,15 +25,15 @@ message(STATUS "Configuring MPI benchmark suite (Phase 6, step 6.8)")
 
 # Same cache variable tests/mpi/CMakeLists.txt defines. set(... CACHE ...)
 # is idempotent -- if tests/mpi already defined it, this is a no-op; if
-# BLAS1_BUILD_TESTS=OFF and tests/mpi never ran, this defines it here
+# LINE1_BUILD_TESTS=OFF and tests/mpi never ran, this defines it here
 # instead, so this file doesn't silently break depending on build option
 # ordering.
-set(BLAS1_MPI_TEST_NPROCS "4" CACHE STRING "Number of MPI ranks used to run MPI tests")
+set(LINE1_MPI_TEST_NPROCS "4" CACHE STRING "Number of MPI ranks used to run MPI tests")
 
 find_library(MATH_LIBRARY m)
 
 add_executable(bench_mpi_dot bench_mpi_dot.c)
-target_link_libraries(bench_mpi_dot PRIVATE blas1_mpi ${MATH_LIBRARY})
+target_link_libraries(bench_mpi_dot PRIVATE line1_mpi ${MATH_LIBRARY})
 target_include_directories(bench_mpi_dot PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/bench
@@ -46,11 +46,11 @@ target_compile_options(bench_mpi_dot PRIVATE
     -O3 -march=native -funroll-loops -fomit-frame-pointer -ffast-math
 )
 
-# Smoke test only -- one rank count (BLAS1_MPI_TEST_NPROCS, same
+# Smoke test only -- one rank count (LINE1_MPI_TEST_NPROCS, same
 # variable the MPI unit tests use), one modest fixed n_local so it
 # runs quickly as part of `make bench` / `make test`.
 add_test(NAME bench_mpi_dot
-    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${BLAS1_MPI_TEST_NPROCS}
+    COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${LINE1_MPI_TEST_NPROCS}
             ${MPIEXEC_PREFLAGS} $<TARGET_FILE:bench_mpi_dot> 1000000 ${MPIEXEC_POSTFLAGS})
 set_tests_properties(bench_mpi_dot PROPERTIES LABELS "bench")
 # See tests/mpi/CMakeLists.txt for why this is set (OpenMPI-internal

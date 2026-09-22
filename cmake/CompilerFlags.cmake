@@ -3,19 +3,19 @@
 # Defines a function:  target_apply_compiler_flags(<target>)
 #
 # Call it on any CMake target (library or executable) to apply
-# the standard BLAS1 compiler flags for that build type.
+# the standard LINE1 compiler flags for that build type.
 #
 # Usage in CMakeLists.txt:
 #   include(CompilerFlags)
-#   target_apply_compiler_flags(blas1)
+#   target_apply_compiler_flags(line1)
 
 # ------------------------------------------------------------------ #
 #  Guard — only process this file once per CMake run                  #
 # ------------------------------------------------------------------ #
-if(DEFINED BLAS1_COMPILER_FLAGS_INCLUDED)
+if(DEFINED LINE1_COMPILER_FLAGS_INCLUDED)
     return()
 endif()
-set(BLAS1_COMPILER_FLAGS_INCLUDED TRUE)
+set(LINE1_COMPILER_FLAGS_INCLUDED TRUE)
 
 # ------------------------------------------------------------------ #
 #  Detect compiler family                                              #
@@ -45,10 +45,10 @@ message(STATUS "Compiler: ${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 # ------------------------------------------------------------------ #
 
 # --- Common flags (all build types) -------------------------------- #
-set(_BLAS1_FLAGS_COMMON "")
+set(_LINE1_FLAGS_COMMON "")
 
 if(IS_GCC OR IS_CLANG)
-    list(APPEND _BLAS1_FLAGS_COMMON
+    list(APPEND _LINE1_FLAGS_COMMON
         -Wall                  # standard warnings
         -Wextra                # extra warnings (unused params, etc.)
         -Wpedantic             # strict ISO C conformance warnings
@@ -61,10 +61,10 @@ if(IS_GCC OR IS_CLANG)
 endif()
 
 # --- Release flags -------------------------------------------------- #
-set(_BLAS1_FLAGS_RELEASE "")
+set(_LINE1_FLAGS_RELEASE "")
 
 if(IS_GCC OR IS_CLANG)
-    list(APPEND _BLAS1_FLAGS_RELEASE
+    list(APPEND _LINE1_FLAGS_RELEASE
         -O3                    # maximum optimisation
         -march=native          # tune for the CPU this is compiled on
                                # (uses AVX2/FMA/NEON if available)
@@ -102,33 +102,33 @@ endif()
 # throughput is exactly what a benchmark should report -- this default
 # is about the LIBRARY build, which callers actually link against.
 #
-# Opt in to -ffast-math with -DBLAS1_STRICT_IEEE=OFF once you have
+# Opt in to -ffast-math with -DLINE1_STRICT_IEEE=OFF once you have
 # specifically decided the throughput is worth those trade-offs for
 # your use case. If you need reproducible bit-exact results across
 # compilers, the default (strict IEEE 754) already gives you that.
 #
-option(BLAS1_STRICT_IEEE
+option(LINE1_STRICT_IEEE
     "Strict IEEE 754 compliance (no -ffast-math). Set to OFF to opt in to -ffast-math for maximum throughput." ON)
 
-set(_BLAS1_FLAGS_MATH "")
+set(_LINE1_FLAGS_MATH "")
 
-if(NOT BLAS1_STRICT_IEEE)
+if(NOT LINE1_STRICT_IEEE)
     if(IS_GCC OR IS_CLANG)
-        list(APPEND _BLAS1_FLAGS_MATH -ffast-math)
+        list(APPEND _LINE1_FLAGS_MATH -ffast-math)
     endif()
-    message(STATUS "Fast math: ON  (opted in via -DBLAS1_STRICT_IEEE=OFF -- "
+    message(STATUS "Fast math: ON  (opted in via -DLINE1_STRICT_IEEE=OFF -- "
                    "Kahan compensation and Inf/NaN handling are not guaranteed "
                    "under this flag; see CompilerFlags.cmake)")
 else()
     message(STATUS "Fast math: OFF (strict IEEE 754 mode -- default; "
-                   "use -DBLAS1_STRICT_IEEE=OFF to opt in to -ffast-math)")
+                   "use -DLINE1_STRICT_IEEE=OFF to opt in to -ffast-math)")
 endif()
 
 # --- Debug flags ---------------------------------------------------- #
-set(_BLAS1_FLAGS_DEBUG "")
+set(_LINE1_FLAGS_DEBUG "")
 
 if(IS_GCC OR IS_CLANG)
-    list(APPEND _BLAS1_FLAGS_DEBUG
+    list(APPEND _LINE1_FLAGS_DEBUG
         -O0                    # no optimisation — debugger sees real code
         -g3                    # maximum debug info (includes macros)
         -fsanitize=address     # AddressSanitizer: catches buffer overflows,
@@ -150,19 +150,19 @@ endif()
 function(target_apply_compiler_flags target)
 
     # Common flags — always
-    target_compile_options(${target} PRIVATE ${_BLAS1_FLAGS_COMMON})
+    target_compile_options(${target} PRIVATE ${_LINE1_FLAGS_COMMON})
 
     # Release and RelWithDebInfo
     target_compile_options(${target} PRIVATE
-        $<$<CONFIG:Release>:${_BLAS1_FLAGS_RELEASE}>
-        $<$<CONFIG:Release>:${_BLAS1_FLAGS_MATH}>
-        $<$<CONFIG:RelWithDebInfo>:${_BLAS1_FLAGS_RELEASE}>
-        $<$<CONFIG:RelWithDebInfo>:${_BLAS1_FLAGS_MATH}>
+        $<$<CONFIG:Release>:${_LINE1_FLAGS_RELEASE}>
+        $<$<CONFIG:Release>:${_LINE1_FLAGS_MATH}>
+        $<$<CONFIG:RelWithDebInfo>:${_LINE1_FLAGS_RELEASE}>
+        $<$<CONFIG:RelWithDebInfo>:${_LINE1_FLAGS_MATH}>
     )
 
     # Debug
     target_compile_options(${target} PRIVATE
-        $<$<CONFIG:Debug>:${_BLAS1_FLAGS_DEBUG}>
+        $<$<CONFIG:Debug>:${_LINE1_FLAGS_DEBUG}>
     )
 
     # Sanitizer flags (-fsanitize=address,undefined) are unlike ordinary
@@ -178,13 +178,13 @@ function(target_apply_compiler_flags target)
     # REQUIREMENT to any target that links against this one, even though
     # this target itself never "links". That propagation is exactly what
     # makes -fsanitize=... appear on, say, test_dot's link command when
-    # test_dot links the blas1 static library -- without it, every
+    # test_dot links the line1 static library -- without it, every
     # executable linking a sanitizer-instrumented static library fails
     # with "undefined reference to __asan_report_load8" and similar,
     # regardless of what flags that executable's own source was compiled
     # with.
     target_link_options(${target} PUBLIC
-        $<$<CONFIG:Debug>:${_BLAS1_FLAGS_DEBUG}>
+        $<$<CONFIG:Debug>:${_LINE1_FLAGS_DEBUG}>
     )
 
 endfunction()

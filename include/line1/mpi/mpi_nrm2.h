@@ -4,11 +4,11 @@
  * @brief MPI-parallel Euclidean (L2) norm.
  */
 
-#ifndef BLAS1_MPI_NRM2_H
-#define BLAS1_MPI_NRM2_H
+#ifndef LINE1_MPI_NRM2_H
+#define LINE1_MPI_NRM2_H
 
 #include <mpi.h>
-#include "blas1/types.h"
+#include "line1/types.h"
 
 /**
  * @ingroup mpi
@@ -56,4 +56,4 @@ BLAS_REAL blas_mpi_nrm2(
     MPI_Comm            comm
 );
 
-#endif /* BLAS1_MPI_NRM2_H */
+#endif /* LINE1_MPI_NRM2_H */

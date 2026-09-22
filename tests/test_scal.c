@@ -1,7 +1,7 @@
 /*
  * tests/test_scal.c — Correctness tests for blas_scal
  *
- * Testing philosophy (see BLAS1_Build_Plan, Phase 3):
+ * Testing philosophy (see LINE1_Build_Plan, Phase 3):
  *   Floating-point results are never compared with ==. Every check uses
  *   an epsilon tolerance — absolute tolerance for results near zero,
  *   relative tolerance for large-magnitude results.
@@ -25,8 +25,8 @@
  *   scal's expected output is all-zero, not "unchanged."
  */
 
-#include "blas1/scal.h"
-#include "blas1/types.h"
+#include "line1/scal.h"
+#include "line1/types.h"
 
 #include <stdio.h>
 #include <math.h>

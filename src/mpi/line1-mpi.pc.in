@@ -1,0 +1,28 @@
+# line1-mpi.pc.in — template for the MPI layer's separate pkg-config
+# file. line1_mpi is an optional, separately-built static library
+# (only exists when LINE1_BUILD_MPI=ON), so it gets its own .pc
+# rather than being folded into line1.pc -- a consumer who only wants
+# the serial library shouldn't have MPI's compile/link flags forced
+# into their build by depending on "line1" alone.
+#
+# `Requires: line1` tells pkg-config to also pull in line1.pc's own
+# Cflags/Libs automatically -- line1_mpi is a thin wrapper around the
+# serial library's functions, so anything linking line1_mpi needs
+# line1 too. The Cflags/Libs lines below carry this machine's actual
+# MPI include/link flags, captured from find_package(MPI) at
+# configure time -- see the install() block in this directory's
+# CMakeLists.txt for how they're built.
+#
+#   pkg-config --cflags --libs line1-mpi
+
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: line1-mpi
+Description: MPI-parallel layer for @PROJECT_NAME@
+Version: @PROJECT_VERSION@
+Requires: line1
+Libs: -L${libdir} -lline1_mpi @LINE1_MPI_PC_LIBS@
+Cflags: -I${includedir} @LINE1_MPI_PC_CFLAGS@

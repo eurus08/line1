@@ -4,10 +4,10 @@
  * @brief Scalar multiply + vector add (y = alpha*x + y).
  */
 
-#ifndef BLAS1_AXPY_H
-#define BLAS1_AXPY_H
+#ifndef LINE1_AXPY_H
+#define LINE1_AXPY_H
 
-#include "blas1/types.h"
+#include "line1/types.h"
 
 /**
  * @ingroup serial
@@ -43,4 +43,4 @@ void blas_axpy(
     blas_int            incy
 );
 
-#endif /* BLAS1_AXPY_H */
+#endif /* LINE1_AXPY_H */

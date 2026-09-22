@@ -1,7 +1,7 @@
 /*
  * tests/test_axpy.c — Correctness tests for blas_axpy
  *
- * Testing philosophy (see BLAS1_Build_Plan, Phase 3):
+ * Testing philosophy (see LINE1_Build_Plan, Phase 3):
  *   Floating-point results are never compared with ==. Every check uses
  *   an epsilon tolerance — absolute tolerance for results near zero,
  *   relative tolerance for large-magnitude results.
@@ -18,8 +18,8 @@
  *   3. Precision test vs a long double reference
  */
 
-#include "blas1/axpy.h"
-#include "blas1/types.h"
+#include "line1/axpy.h"
+#include "line1/types.h"
 
 #include <stdio.h>
 #include <math.h>

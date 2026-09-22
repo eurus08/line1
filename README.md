@@ -1,4 +1,4 @@
-# blas1
+# line1
 
 A production-quality implementation of **BLAS Level 1** (vector-vector operations) in C, built from scratch across seven phases: serial implementation, correctness testing, benchmarking, SIMD kernels, and an MPI-parallel layer.
 
@@ -42,17 +42,17 @@ ctest --test-dir build
 
 | Option | Default | Description |
 |---|---|---|
-| `BLAS1_BUILD_TESTS` | `ON` | Build the correctness test suite |
-| `BLAS1_BUILD_BENCH` | `OFF` | Build the benchmark suite (`bench_dot`, `bench_axpy`, and the MPI scaling benchmark) |
-| `BLAS1_BUILD_MPI` | `OFF` | Build the MPI parallel layer, its tests, and its benchmark |
-| `BLAS1_USE_FLOAT` | `OFF` | Build in single precision (`float`) instead of `double` |
-| `BLAS1_STRICT_IEEE` | `ON` | Strict IEEE 754 compliance — no `-ffast-math`. **Default**, deliberately: this library's pitch is careful, numerically robust arithmetic (Kahan-compensated summation, overflow/underflow-safe `nrm2`, explicit `Inf`/`NaN` handling), and `-ffast-math` actively undermines that — confirmed directly (by inspecting generated assembly, not just documented) to eliminate this library's own `Inf`/`NaN`-handling branches and to reduce `blas_dot_kahan()` to bit-identical output with plain `blas_dot()`, silently making the Kahan variant do nothing useful. Set to `OFF` to opt in to `-ffast-math` for maximum throughput once you've decided that trade-off is worth it for your use case — see "Numerical robustness vs. raw throughput" below |
-| `BLAS1_BUILD_SHARED` | `OFF` | Also build `libblas1.so` (properly versioned, `libblas1.so.1.0.0` with `.so.1`/`.so` symlinks) alongside the always-built static `libblas1.a` |
+| `LINE1_BUILD_TESTS` | `ON` | Build the correctness test suite |
+| `LINE1_BUILD_BENCH` | `OFF` | Build the benchmark suite (`bench_dot`, `bench_axpy`, and the MPI scaling benchmark) |
+| `LINE1_BUILD_MPI` | `OFF` | Build the MPI parallel layer, its tests, and its benchmark |
+| `LINE1_USE_FLOAT` | `OFF` | Build in single precision (`float`) instead of `double` |
+| `LINE1_STRICT_IEEE` | `ON` | Strict IEEE 754 compliance — no `-ffast-math`. **Default**, deliberately: this library's pitch is careful, numerically robust arithmetic (Kahan-compensated summation, overflow/underflow-safe `nrm2`, explicit `Inf`/`NaN` handling), and `-ffast-math` actively undermines that — confirmed directly (by inspecting generated assembly, not just documented) to eliminate this library's own `Inf`/`NaN`-handling branches and to reduce `blas_dot_kahan()` to bit-identical output with plain `blas_dot()`, silently making the Kahan variant do nothing useful. Set to `OFF` to opt in to `-ffast-math` for maximum throughput once you've decided that trade-off is worth it for your use case — see "Numerical robustness vs. raw throughput" below |
+| `LINE1_BUILD_SHARED` | `OFF` | Also build `libline1.so` (properly versioned, `libline1.so.1.0.0` with `.so.1`/`.so` symlinks) alongside the always-built static `libline1.a` |
 
 With the MPI layer and benchmarks both enabled:
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DBLAS1_BUILD_MPI=ON -DBLAS1_BUILD_BENCH=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DLINE1_BUILD_MPI=ON -DLINE1_BUILD_BENCH=ON
 cmake --build build --parallel
 ctest --test-dir build          # runs serial + MPI tests + benchmark smoke tests
 ```
@@ -61,21 +61,21 @@ Architecture-specific SIMD kernels (AVX2 on x86, NEON on ARM) are detected and s
 
 ### Numerical robustness vs. raw throughput
 
-The **default** build (`BLAS1_STRICT_IEEE=ON`) is strict IEEE 754: no `-ffast-math`. This is a deliberate choice, not an oversight — this library's whole pitch is careful, numerically robust arithmetic, and `-ffast-math` actively works against that:
+The **default** build (`LINE1_STRICT_IEEE=ON`) is strict IEEE 754: no `-ffast-math`. This is a deliberate choice, not an oversight — this library's whole pitch is careful, numerically robust arithmetic, and `-ffast-math` actively works against that:
 
 - `-ffast-math` implies `-ffinite-math-only`, which entitles the compiler to assume no floating-point value is ever `Inf` or `NaN`. Confirmed directly by inspecting the generated assembly (not just documented as a theoretical risk): under this flag, GCC dead-code-eliminates the `Inf`-handling guards `nrm2()` and `asum()` depend on to return a correct `+Inf` (instead of a spurious `NaN`) for input containing infinities.
 - `-ffast-math` permits floating-point reassociation, which is confirmed to reduce `blas_dot_kahan()` on this project's own Release flags to bit-identical output with the uncompensated `blas_dot()` — silently making the "Kahan" variant pay for extra arithmetic while providing none of its accuracy benefit.
 
-Set `-DBLAS1_STRICT_IEEE=OFF` to opt in to `-ffast-math` for maximum throughput, once you've specifically decided that trade-off is worth it — this matches what OpenBLAS and MKL do by default, but here it's an explicit choice rather than a silent one. Benchmarks (`bench/`) always build with `-ffast-math` regardless of this setting, since raw best-case throughput is exactly what a benchmark should report; this option only affects the library callers actually link against.
+Set `-DLINE1_STRICT_IEEE=OFF` to opt in to `-ffast-math` for maximum throughput, once you've specifically decided that trade-off is worth it — this matches what OpenBLAS and MKL do by default, but here it's an explicit choice rather than a silent one. Benchmarks (`bench/`) always build with `-ffast-math` regardless of this setting, since raw best-case throughput is exactly what a benchmark should report; this option only affects the library callers actually link against.
 
 ### A note on portability: `-march=native`
 
-Release builds (with either `BLAS1_STRICT_IEEE` setting) use `-march=native` by default, which tunes code generation for the exact CPU the library is *compiled* on — using AVX2/FMA/NEON instructions if that machine has them. **A `-march=native` build is not portable**: the resulting binary can crash with `SIGILL` (illegal instruction) if copied to and run on a different, older, or otherwise less-capable CPU than the one it was built on. This is fine (and standard practice) for building and running on the same machine, or in a container image that will only ever run on matching hardware. If you're building a binary or shared library that will be distributed to or run on machines you don't control, override the architecture flag yourself (e.g. `-march=x86-64-v2` for a broad-but-still-modern x86_64 baseline, or drop `-march` entirely) rather than relying on the default.
+Release builds (with either `LINE1_STRICT_IEEE` setting) use `-march=native` by default, which tunes code generation for the exact CPU the library is *compiled* on — using AVX2/FMA/NEON instructions if that machine has them. **A `-march=native` build is not portable**: the resulting binary can crash with `SIGILL` (illegal instruction) if copied to and run on a different, older, or otherwise less-capable CPU than the one it was built on. This is fine (and standard practice) for building and running on the same machine, or in a container image that will only ever run on matching hardware. If you're building a binary or shared library that will be distributed to or run on machines you don't control, override the architecture flag yourself (e.g. `-march=x86-64-v2` for a broad-but-still-modern x86_64 baseline, or drop `-march` entirely) rather than relying on the default.
 
 ## Installing
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DBLAS1_BUILD_MPI=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DLINE1_BUILD_MPI=ON
 cmake --build build --parallel
 cmake --install build --prefix /your/install/path   # defaults to /usr/local
 ```
@@ -83,13 +83,13 @@ cmake --install build --prefix /your/install/path   # defaults to /usr/local
 This installs the static library, public headers, and a [pkg-config](https://en.wikipedia.org/wiki/Pkg-config) file, so other projects can find and link this library with:
 
 ```bash
-gcc myprogram.c $(pkg-config --cflags --libs blas1) -o myprogram
+gcc myprogram.c $(pkg-config --cflags --libs line1) -o myprogram
 ```
 
-If built with `-DBLAS1_BUILD_MPI=ON`, a second file, `blas1-mpi`, covers the MPI layer separately (`Requires: blas1`, so its own flags chain in `blas1`'s automatically):
+If built with `-DLINE1_BUILD_MPI=ON`, a second file, `line1-mpi`, covers the MPI layer separately (`Requires: line1`, so its own flags chain in `line1`'s automatically):
 
 ```bash
-mpicc myprogram.c $(pkg-config --cflags --libs blas1-mpi) -o myprogram
+mpicc myprogram.c $(pkg-config --cflags --libs line1-mpi) -o myprogram
 ```
 
 `make install` is a shorthand for the same thing.
@@ -108,7 +108,7 @@ Testing philosophy: floating-point results are never compared with `==`. Every t
 
 ### Serial
 
-Measured with `bench_dot`/`bench_axpy` (100 trials per size, median reported; full output in `results/`), on the AVX2 backend (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DBLAS1_BUILD_BENCH=ON`, default `BLAS1_STRICT_IEEE=ON` — the AVX2 kernels use explicit intrinsics rather than auto-vectorization, so they don't depend on `-ffast-math` for their throughput). `dot` is 2 FLOPs and 16 bytes per element; `axpy` is 2 FLOPs and 24 bytes:
+Measured with `bench_dot`/`bench_axpy` (100 trials per size, median reported; full output in `results/`), on the AVX2 backend (`cmake -B build -DCMAKE_BUILD_TYPE=Release -DLINE1_BUILD_BENCH=ON`, default `LINE1_STRICT_IEEE=ON` — the AVX2 kernels use explicit intrinsics rather than auto-vectorization, so they don't depend on `-ffast-math` for their throughput). `dot` is 2 FLOPs and 16 bytes per element; `axpy` is 2 FLOPs and 24 bytes:
 
 *(Re-measured after fixing a `cmake/DetectArch.cmake` bug that had silently forced every build, including the numbers previously shown here, onto the generic scalar fallback instead of AVX2 — see git history. The small-`n` GFlop/s jump below versus that earlier table is that fix taking effect.)*
 
@@ -145,7 +145,7 @@ Measured with `bench_mpi_dot` across MPI rank counts 1–12 on a 6-core/12-threa
 
 Reproduce with:
 ```bash
-cmake -B build -DBLAS1_BUILD_MPI=ON -DBLAS1_BUILD_BENCH=ON -DCMAKE_BUILD_TYPE=Release
+cmake -B build -DLINE1_BUILD_MPI=ON -DLINE1_BUILD_BENCH=ON -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 bash bench/mpi/run_scaling.sh          # edit RANK_COUNTS to match your core count first
 python3 bench/mpi/plot_scaling.py
@@ -153,7 +153,7 @@ python3 bench/mpi/plot_scaling.py
 
 ## API reference
 
-### Serial (`include/blas1/*.h`)
+### Serial (`include/line1/*.h`)
 
 | Function | Signature | Notes |
 |---|---|---|
@@ -165,9 +165,9 @@ python3 bench/mpi/plot_scaling.py
 | `blas_asum` | `BLAS_REAL blas_asum(blas_int n, const BLAS_REAL *x, blas_int incx)` | Returns `0.0` for `incx <= 0` (see stride note above) |
 | `blas_iamax` | `blas_int blas_iamax(blas_int n, const BLAS_REAL *x, blas_int incx)` | 1-based index (BLAS/Fortran convention); returns `0` for `n <= 0` or `incx <= 0` |
 
-`BLAS_REAL` is `double` by default, `float` if built with `-DBLAS1_USE_FLOAT=ON`. `blas_int` is `int64_t`, to support vectors past 2 billion elements.
+`BLAS_REAL` is `double` by default, `float` if built with `-DLINE1_USE_FLOAT=ON`. `blas_int` is `int64_t`, to support vectors past 2 billion elements.
 
-### MPI (`include/blas1/mpi/*.h`, requires `-DBLAS1_BUILD_MPI=ON`)
+### MPI (`include/line1/mpi/*.h`, requires `-DLINE1_BUILD_MPI=ON`)
 
 Every MPI function takes the calling rank's **local slice** of the vector — partitioning the global vector across ranks is the caller's responsibility, matching how real distributed BLAS layers are used.
 
@@ -181,16 +181,16 @@ Every MPI function takes the calling rank's **local slice** of the vector — pa
 ## Project structure
 
 ```
-blas1/
+line1/
 ├── CMakeLists.txt
 ├── Makefile                    # convenience wrapper: make build/test/bench
 ├── cmake/
 │   ├── CompilerFlags.cmake     # -O3/-ffast-math/-Wall etc., per build type
 │   └── DetectArch.cmake        # picks AVX2 / NEON / generic at configure time
-├── include/blas1/              # public headers
-│   ├── types.h  blas1.h        # shared types + umbrella header
+├── include/line1/              # public headers
+│   ├── types.h  line1.h        # shared types + umbrella header
 │   ├── dot.h  axpy.h  scal.h  nrm2.h  asum.h  iamax.h
-│   └── mpi/                    # MPI public headers (requires BLAS1_BUILD_MPI)
+│   └── mpi/                    # MPI public headers (requires LINE1_BUILD_MPI)
 ├── src/                        # serial implementations
 │   ├── dot.c  axpy.c           # thin dispatchers -> kernel/{generic,x86,arm}/
 │   ├── scal.c  nrm2.c  asum.c  iamax.c

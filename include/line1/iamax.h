@@ -4,10 +4,10 @@
  * @brief Index of the element with the largest absolute value.
  */
 
-#ifndef BLAS1_IAMAX_H
-#define BLAS1_IAMAX_H
+#ifndef LINE1_IAMAX_H
+#define LINE1_IAMAX_H
 
-#include "blas1/types.h"
+#include "line1/types.h"
 
 /**
  * @ingroup serial
@@ -37,4 +37,4 @@ blas_int blas_iamax(
     blas_int            incx
 );
 
-#endif /* BLAS1_IAMAX_H */
+#endif /* LINE1_IAMAX_H */

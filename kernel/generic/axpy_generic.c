@@ -16,7 +16,7 @@
  * the instruction sequence on hardware that supports it.
  */
 
-#include "blas1/types.h"
+#include "line1/types.h"
 #include "axpy_generic.h"   /* own prototype — satisfies -Wmissing-prototypes */
 
 void blas_axpy_generic(blas_int n,

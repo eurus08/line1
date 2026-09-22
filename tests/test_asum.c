@@ -1,7 +1,7 @@
 /*
  * tests/test_asum.c — Correctness tests for blas_asum
  *
- * Testing philosophy (see BLAS1_Build_Plan, Phase 3):
+ * Testing philosophy (see LINE1_Build_Plan, Phase 3):
  *   Floating-point results are never compared with ==. Every check uses
  *   an epsilon tolerance — absolute tolerance for results near zero,
  *   relative tolerance for large-magnitude results.
@@ -20,8 +20,8 @@
  *      many small terms designed to expose naive-summation rounding error
  */
 
-#include "blas1/asum.h"
-#include "blas1/types.h"
+#include "line1/asum.h"
+#include "line1/types.h"
 
 #include <stdio.h>
 #include <math.h>

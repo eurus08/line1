@@ -2,7 +2,7 @@
 #
 # Phase 4 — Benchmarking Infrastructure
 #
-# Benchmarks are built ONLY when BLAS1_BUILD_BENCH=ON (see root
+# Benchmarks are built ONLY when LINE1_BUILD_BENCH=ON (see root
 # CMakeLists.txt, section 8 — disabled by default since they take much
 # longer to run than the test suite and aren't needed for a normal build).
 #
@@ -22,7 +22,7 @@
 #
 # Pattern for adding a new benchmark:
 #   add_executable(bench_X bench_X.c)
-#   target_link_libraries(bench_X PRIVATE blas1 ${MATH_LIBRARY})
+#   target_link_libraries(bench_X PRIVATE line1 ${MATH_LIBRARY})
 #   target_include_directories(bench_X PRIVATE ${CMAKE_SOURCE_DIR}/include
 #                                               ${CMAKE_CURRENT_SOURCE_DIR})
 #   target_apply_compiler_flags(bench_X)
@@ -40,7 +40,7 @@ find_library(MATH_LIBRARY m)
 # cold-cache median times over 100 trials each, reports GFlop/s and GB/s.
 # See bench/bench_dot.c for full methodology notes.
 add_executable(bench_dot bench_dot.c)
-target_link_libraries(bench_dot PRIVATE blas1 ${MATH_LIBRARY})
+target_link_libraries(bench_dot PRIVATE line1 ${MATH_LIBRARY})
 target_include_directories(bench_dot PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -50,7 +50,7 @@ target_include_directories(bench_dot PRIVATE
 # applies the shared warning flags; we additionally force the optimisation
 # flag set directly rather than relying on CMAKE_BUILD_TYPE, since a developer
 # might reasonably run
-#   cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBLAS1_BUILD_BENCH=ON
+#   cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLINE1_BUILD_BENCH=ON
 # and would still expect real numbers out of `make bench`.
 # target_apply_arch_flags() gives this executable the same USE_AVX2 /
 # USE_NEON / USE_GENERIC define DetectArch.cmake selected for the
@@ -73,7 +73,7 @@ set_tests_properties(bench_dot PROPERTIES LABELS "bench")
 # (3x bytes/element instead of 2x, void return value, in-place mutation
 # of y across repeated warm-cache trials).
 add_executable(bench_axpy bench_axpy.c)
-target_link_libraries(bench_axpy PRIVATE blas1 ${MATH_LIBRARY})
+target_link_libraries(bench_axpy PRIVATE line1 ${MATH_LIBRARY})
 target_include_directories(bench_axpy PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}

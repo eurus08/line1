@@ -67,7 +67,7 @@
  *   accumulate n terms and rounding error grows with n. Kahan keeps it at
  *   O(eps) regardless of n. Same -ffast-math caveat as dot.c applies —
  *   this is why strict IEEE 754 (no -ffast-math) is this project's
- *   DEFAULT build; opt out with -DBLAS1_STRICT_IEEE=OFF only once
+ *   DEFAULT build; opt out with -DLINE1_STRICT_IEEE=OFF only once
  *   you've decided the throughput is worth losing this guarantee.
  *
  * Stride support:
@@ -75,11 +75,11 @@
  *   the same unit-stride / strided split used throughout the library.
  */
 
-#include "blas1/nrm2.h"
-#include "blas1/iamax.h"
-#include "blas1/types.h"
+#include "line1/nrm2.h"
+#include "line1/iamax.h"
+#include "line1/types.h"
 /* BLAS_FABS() / BLAS_SQRT() from types.h are precision-generic (fabs/sqrt
- * for double, fabsf/sqrtf for float) -- see BLAS1_USE_FLOAT fix notes. */
+ * for double, fabsf/sqrtf for float) -- see LINE1_USE_FLOAT fix notes. */
 
 BLAS_REAL blas_nrm2(blas_int n,
                     const BLAS_REAL * BLAS_RESTRICT x, blas_int incx)

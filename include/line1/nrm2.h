@@ -4,10 +4,10 @@
  * @brief Euclidean (L2) norm of a vector.
  */
 
-#ifndef BLAS1_NRM2_H
-#define BLAS1_NRM2_H
+#ifndef LINE1_NRM2_H
+#define LINE1_NRM2_H
 
-#include "blas1/types.h"
+#include "line1/types.h"
 
 /**
  * @ingroup serial
@@ -38,4 +38,4 @@ BLAS_REAL blas_nrm2(
     blas_int            incx
 );
 
-#endif /* BLAS1_NRM2_H */
+#endif /* LINE1_NRM2_H */

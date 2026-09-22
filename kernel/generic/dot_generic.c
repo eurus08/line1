@@ -42,7 +42,7 @@
  *   the public names — they never see the _generic suffix.
  */
 
-#include "blas1/types.h"
+#include "line1/types.h"
 #include "dot_generic.h"   /* own prototype — satisfies -Wmissing-prototypes */
 
 /* -------------------------------------------------------------------------
@@ -88,7 +88,7 @@ BLAS_REAL blas_dot_generic(blas_int n,
  * caveat (which can eliminate the compensation) applies here identically —
  * see src/dot.c for the full discussion. Strict IEEE 754 (no -ffast-math)
  * is this project's DEFAULT build for exactly this reason; opt out with
- * -DBLAS1_STRICT_IEEE=OFF only once throughput has been judged worth it.
+ * -DLINE1_STRICT_IEEE=OFF only once throughput has been judged worth it.
  *
  * Overflow handling (same fix as src/asum.c, same bug class):
  *   Once `sum` overflows to +-Inf, the compensation term `c` typically

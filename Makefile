@@ -37,7 +37,7 @@ test: build
 
 # ── Run benchmarks ──────────────────────────────────────────────────
 bench:
-	cmake -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Release -DBLAS1_BUILD_BENCH=ON
+	cmake -B $(BUILD_DIR) -DCMAKE_BUILD_TYPE=Release -DLINE1_BUILD_BENCH=ON
 	cmake --build $(BUILD_DIR) --parallel
 	cd $(BUILD_DIR) && ctest -R bench -V
 

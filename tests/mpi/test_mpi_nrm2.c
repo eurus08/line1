@@ -12,8 +12,8 @@
  * Allreduce, then sqrt" approach would get wrong.
  */
 
-#include "blas1/mpi/mpi_nrm2.h"
-#include "blas1/types.h"
+#include "line1/mpi/mpi_nrm2.h"
+#include "line1/types.h"
 
 #include <mpi.h>
 #include <math.h>

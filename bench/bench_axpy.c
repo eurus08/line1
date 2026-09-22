@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "blas1/blas1.h"
+#include "line1/line1.h"
 #include "timing.h"
 
 /*

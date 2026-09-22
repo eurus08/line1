@@ -13,8 +13,8 @@
  * across three kernel files.
  */
 
-#include "blas1/axpy.h"
-#include "blas1/types.h"
+#include "line1/axpy.h"
+#include "line1/types.h"
 
 #if defined(USE_AVX2)
 #  include "../kernel/x86/axpy_avx2.h"

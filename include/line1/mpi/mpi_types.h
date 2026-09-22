@@ -4,9 +4,9 @@
  * @brief Maps BLAS_REAL to its matching MPI_Datatype, and defines the
  *        MAXLOC pair type used by blas_mpi_iamax().
  *
- * @defgroup mpi MPI Parallel BLAS1 Operations
+ * @defgroup mpi MPI Parallel LINE1 Operations
  * @brief MPI-parallel wrappers around the serial @ref serial
- *        operations. Requires building with @c -DBLAS1_BUILD_MPI=ON.
+ *        operations. Requires building with @c -DLINE1_BUILD_MPI=ON.
  *
  * Every function in this group takes the calling rank's **local
  * slice** of a vector, not the whole global vector -- partitioning
@@ -17,7 +17,7 @@
  * algorithm is reimplemented from scratch.
  *
  * The serial library picks @c double or @c float for @c BLAS_REAL at
- * compile time via @c BLAS_USE_FLOAT (see blas1/types.h). Every MPI
+ * compile time via @c BLAS_USE_FLOAT (see line1/types.h). Every MPI
  * collective call (@c MPI_Allreduce, @c MPI_Bcast, etc.) needs to be
  * told which @c MPI_Datatype it is moving -- passing the wrong one is
  * a silent correctness bug, not a compile error, since
@@ -26,11 +26,11 @@
  * stays consistent automatically if the precision is ever switched.
  */
 
-#ifndef BLAS1_MPI_TYPES_H
-#define BLAS1_MPI_TYPES_H
+#ifndef LINE1_MPI_TYPES_H
+#define LINE1_MPI_TYPES_H
 
 #include <mpi.h>
-#include "blas1/types.h"
+#include "line1/types.h"
 
 /**
  * @def BLAS_MPI_REAL
@@ -100,4 +100,4 @@ typedef struct {
     #define BLAS_MPI_MAXLOC_TYPE MPI_DOUBLE_INT
 #endif
 
-#endif /* BLAS1_MPI_TYPES_H */
+#endif /* LINE1_MPI_TYPES_H */

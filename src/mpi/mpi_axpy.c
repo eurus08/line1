@@ -12,8 +12,8 @@
  * break the uniform call pattern described in mpi_axpy.h).
  */
 
-#include "blas1/mpi/mpi_axpy.h"
-#include "blas1/axpy.h"
+#include "line1/mpi/mpi_axpy.h"
+#include "line1/axpy.h"
 
 void blas_mpi_axpy(
     blas_int            n_local,

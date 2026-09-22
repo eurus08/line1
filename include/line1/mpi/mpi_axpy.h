@@ -4,11 +4,11 @@
  * @brief MPI-parallel axpy (y = alpha*x + y).
  */
 
-#ifndef BLAS1_MPI_AXPY_H
-#define BLAS1_MPI_AXPY_H
+#ifndef LINE1_MPI_AXPY_H
+#define LINE1_MPI_AXPY_H
 
 #include <mpi.h>
-#include "blas1/types.h"
+#include "line1/types.h"
 
 /**
  * @ingroup mpi
@@ -26,7 +26,7 @@
  *       with the rest of the MPI layer (blas_mpi_dot(),
  *       blas_mpi_nrm2(), and blas_mpi_iamax() all take a @c comm
  *       because they genuinely need one). A caller that treats "the
- *       MPI BLAS1 layer" as one uniform interface doesn't have to
+ *       MPI LINE1 layer" as one uniform interface doesn't have to
  *       special-case @c axpy just because it happens not to
  *       communicate. The implementation ignores this parameter
  *       entirely.
@@ -57,4 +57,4 @@ void blas_mpi_axpy(
     MPI_Comm            comm
 );
 
-#endif /* BLAS1_MPI_AXPY_H */
+#endif /* LINE1_MPI_AXPY_H */

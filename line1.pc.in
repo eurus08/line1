@@ -1,8 +1,8 @@
-# blas1.pc.in — template for the pkg-config file, processed by CMake's
-# configure_file() into build/blas1.pc, then installed alongside the
+# line1.pc.in — template for the pkg-config file, processed by CMake's
+# configure_file() into build/line1.pc, then installed alongside the
 # library so other projects can find and link it with:
 #
-#   pkg-config --cflags --libs blas1
+#   pkg-config --cflags --libs line1
 #
 # @-delimited variables are substituted by CMake (configure_file with
 # @ONLY); ${...} variables are pkg-config's own, resolved at the time
@@ -18,6 +18,6 @@ includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
 Name: @PROJECT_NAME@
 Description: @PROJECT_DESCRIPTION@
 Version: @PROJECT_VERSION@
-Libs: -L${libdir} -lblas1
+Libs: -L${libdir} -lline1
 Libs.private: -lm
 Cflags: -I${includedir}

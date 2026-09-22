@@ -20,9 +20,9 @@
  *   — we are just changing WHO does the adding, not HOW.
  */
 
-#include "blas1/mpi/mpi_dot.h"
-#include "blas1/mpi/mpi_types.h"
-#include "blas1/dot.h"
+#include "line1/mpi/mpi_dot.h"
+#include "line1/mpi/mpi_types.h"
+#include "line1/dot.h"
 
 BLAS_REAL blas_mpi_dot(
     blas_int            n_local,

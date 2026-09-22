@@ -1,7 +1,7 @@
 /*
  * tests/test_correctness.c — Cross-function correctness tests
  *
- * Testing philosophy (see BLAS1_Build_Plan, Phase 3):
+ * Testing philosophy (see LINE1_Build_Plan, Phase 3):
  *   Floating-point results are never compared with ==. Every check uses
  *   an epsilon tolerance — absolute tolerance for results near zero,
  *   relative tolerance for large-magnitude results.
@@ -32,13 +32,13 @@
  *      the returned integer in isolation
  */
 
-#include "blas1/dot.h"
-#include "blas1/axpy.h"
-#include "blas1/scal.h"
-#include "blas1/nrm2.h"
-#include "blas1/asum.h"
-#include "blas1/iamax.h"
-#include "blas1/types.h"
+#include "line1/dot.h"
+#include "line1/axpy.h"
+#include "line1/scal.h"
+#include "line1/nrm2.h"
+#include "line1/asum.h"
+#include "line1/iamax.h"
+#include "line1/types.h"
 
 #include <stdio.h>
 #include <math.h>

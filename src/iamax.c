@@ -59,8 +59,8 @@
  *   the caller uses (result - 1) * incx to get the memory offset.
  */
 
-#include "blas1/iamax.h"
-#include "blas1/types.h"
+#include "line1/iamax.h"
+#include "line1/types.h"
 /* fabs() replaced by BLAS_FABS() from types.h (precision-generic) */
 
 blas_int blas_iamax(blas_int n,

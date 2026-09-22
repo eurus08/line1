@@ -5,13 +5,13 @@
  * kernel/generic/dot_generic.c (to satisfy -Wmissing-prototypes) and
  * by src/dot.c's dispatcher (instead of raw forward declarations).
  *
- * Users of the library never include this — they use <blas1/dot.h>.
+ * Users of the library never include this — they use <line1/dot.h>.
  */
 
-#ifndef BLAS1_KERNEL_GENERIC_DOT_GENERIC_H
-#define BLAS1_KERNEL_GENERIC_DOT_GENERIC_H
+#ifndef LINE1_KERNEL_GENERIC_DOT_GENERIC_H
+#define LINE1_KERNEL_GENERIC_DOT_GENERIC_H
 
-#include "blas1/types.h"
+#include "line1/types.h"
 
 BLAS_REAL blas_dot_generic(blas_int n,
                             const BLAS_REAL * BLAS_RESTRICT x, blas_int incx,
@@ -21,4 +21,4 @@ BLAS_REAL blas_dot_kahan_generic(blas_int n,
                                   const BLAS_REAL * BLAS_RESTRICT x, blas_int incx,
                                   const BLAS_REAL * BLAS_RESTRICT y, blas_int incy);
 
-#endif /* BLAS1_KERNEL_GENERIC_DOT_GENERIC_H */
+#endif /* LINE1_KERNEL_GENERIC_DOT_GENERIC_H */

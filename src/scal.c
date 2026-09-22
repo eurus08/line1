@@ -37,8 +37,8 @@
  *   the common case; general strided path handles incx > 1.
  */
 
-#include "blas1/scal.h"
-#include "blas1/types.h"
+#include "line1/scal.h"
+#include "line1/types.h"
 
 void blas_scal(blas_int n,
                BLAS_REAL alpha,

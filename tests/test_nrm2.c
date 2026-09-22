@@ -1,7 +1,7 @@
 /*
  * tests/test_nrm2.c — Correctness tests for blas_nrm2
  *
- * Testing philosophy (see BLAS1_Build_Plan, Phase 3):
+ * Testing philosophy (see LINE1_Build_Plan, Phase 3):
  *   Floating-point results are never compared with ==. Every check uses
  *   an epsilon tolerance — absolute tolerance for results near zero,
  *   relative tolerance for large-magnitude results.
@@ -57,8 +57,8 @@
  *   under any flag regime used by this project.
  */
 
-#include "blas1/nrm2.h"
-#include "blas1/types.h"
+#include "line1/nrm2.h"
+#include "line1/types.h"
 
 #include <stdio.h>
 #include <math.h>

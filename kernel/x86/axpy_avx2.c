@@ -42,7 +42,7 @@
 
 #include <immintrin.h>
 
-#include "blas1/types.h"
+#include "line1/types.h"
 #include "axpy_avx2.h"   /* own prototype — satisfies -Wmissing-prototypes */
 
 #ifndef BLAS_USE_FLOAT

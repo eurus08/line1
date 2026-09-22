@@ -12,9 +12,9 @@
  * whatever n_local it likes independently.
  */
 
-#include "blas1/mpi/mpi_axpy.h"
-#include "blas1/axpy.h"
-#include "blas1/types.h"
+#include "line1/mpi/mpi_axpy.h"
+#include "line1/axpy.h"
+#include "line1/types.h"
 
 #include <mpi.h>
 #include <math.h>

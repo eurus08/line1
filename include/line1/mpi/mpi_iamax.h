@@ -4,11 +4,11 @@
  * @brief MPI-parallel index of the maximum absolute value.
  */
 
-#ifndef BLAS1_MPI_IAMAX_H
-#define BLAS1_MPI_IAMAX_H
+#ifndef LINE1_MPI_IAMAX_H
+#define LINE1_MPI_IAMAX_H
 
 #include <mpi.h>
-#include "blas1/types.h"
+#include "line1/types.h"
 
 /**
  * @struct blas_mpi_iamax_result_t
@@ -39,7 +39,7 @@ typedef struct {
  * The catch: every predefined MAXLOC-compatible MPI pair type
  * (@c MPI_DOUBLE_INT, @c MPI_FLOAT_INT, ...) uses a plain 32-bit
  * @c int for the location field. ::blas_int, however, is deliberately
- * @c int64_t (see blas1/types.h) specifically so this library can
+ * @c int64_t (see line1/types.h) specifically so this library can
  * address vectors past 2 billion elements. Packing a 64-bit global
  * index into MAXLOC's 32-bit location field would silently truncate
  * and return a *wrong* index for any global vector longer than
@@ -90,4 +90,4 @@ blas_mpi_iamax_result_t blas_mpi_iamax(
     MPI_Comm            comm
 );
 
-#endif /* BLAS1_MPI_IAMAX_H */
+#endif /* LINE1_MPI_IAMAX_H */

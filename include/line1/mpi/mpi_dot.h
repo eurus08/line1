@@ -4,11 +4,11 @@
  * @brief MPI-parallel dot product.
  */
 
-#ifndef BLAS1_MPI_DOT_H
-#define BLAS1_MPI_DOT_H
+#ifndef LINE1_MPI_DOT_H
+#define LINE1_MPI_DOT_H
 
 #include <mpi.h>
-#include "blas1/types.h"
+#include "line1/types.h"
 
 /**
  * @ingroup mpi
@@ -53,4 +53,4 @@ BLAS_REAL blas_mpi_dot(
     MPI_Comm            comm
 );
 
-#endif /* BLAS1_MPI_DOT_H */
+#endif /* LINE1_MPI_DOT_H */

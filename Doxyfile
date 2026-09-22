@@ -1,7 +1,7 @@
-# Doxyfile for blas1 (Phase 7, step 7.2)
+# Doxyfile for line1 (Phase 7, step 7.2)
 #
 # Generates browsable HTML API documentation from the Doxygen-tagged
-# comments in include/blas1/*.h and include/blas1/mpi/*.h.
+# comments in include/line1/*.h and include/line1/mpi/*.h.
 #
 # This is a curated subset of Doxygen's full configuration -- any
 # setting not listed here uses Doxygen's own default (run
@@ -22,7 +22,7 @@
 #---------------------------------------------------------------------------
 # Project identity
 #---------------------------------------------------------------------------
-PROJECT_NAME           = "blas1"
+PROJECT_NAME           = "line1"
 PROJECT_BRIEF           = "A production-quality BLAS Level 1 library in C -- serial and MPI-parallel"
 PROJECT_NUMBER          = 1.0.0
 OUTPUT_LANGUAGE         = English
@@ -34,7 +34,7 @@ OUTPUT_LANGUAGE         = English
 # implementation detail, not the library's API surface. README.md is
 # included so it becomes the generated site's front page (see
 # USE_MDFILE_AS_MAINPAGE below).
-INPUT                   = README.md include/blas1
+INPUT                   = README.md include/line1
 RECURSIVE               = YES
 FILE_PATTERNS           = *.h
 USE_MDFILE_AS_MAINPAGE  = README.md

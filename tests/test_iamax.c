@@ -1,7 +1,7 @@
 /*
  * tests/test_iamax.c — Correctness tests for blas_iamax
  *
- * Testing philosophy (see BLAS1_Build_Plan, Phase 3):
+ * Testing philosophy (see LINE1_Build_Plan, Phase 3):
  *   Floating-point results are never compared with ==. Every check uses
  *   an epsilon tolerance — absolute tolerance for results near zero,
  *   relative tolerance for large-magnitude results. iamax itself
@@ -24,8 +24,8 @@
  *   7. Stride != 1 (including negative stride)
  */
 
-#include "blas1/iamax.h"
-#include "blas1/types.h"
+#include "line1/iamax.h"
+#include "line1/types.h"
 
 #include <stdio.h>
 #include <math.h>

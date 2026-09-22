@@ -1,7 +1,7 @@
 /**
  * @file types.h
  * @brief Shared type definitions, precision selection, and compiler
- *        hint macros used throughout the BLAS1 library.
+ *        hint macros used throughout the LINE1 library.
  *
  * Every source file in this project includes this header, directly
  * or transitively. It defines:
@@ -10,8 +10,8 @@
  *   - A precision-selection mechanism (float vs double)
  */
 
-#ifndef BLAS1_TYPES_H
-#define BLAS1_TYPES_H
+#ifndef LINE1_TYPES_H
+#define LINE1_TYPES_H
 
 #include <stdint.h>   /* int64_t, int32_t, uint32_t, uint64_t */
 #include <stddef.h>   /* size_t           */
@@ -245,4 +245,4 @@ BLAS_INLINE blas_int blas_stride_start(blas_int n, blas_int incx)
  */
 #define BLAS_UNUSED(x) ((void)(x))
 
-#endif /* BLAS1_TYPES_H */
+#endif /* LINE1_TYPES_H */

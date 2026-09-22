@@ -39,7 +39,7 @@
 
 #include <arm_neon.h>    /* NEON intrinsics */
 
-#include "blas1/types.h"
+#include "line1/types.h"
 #include "dot_neon.h"    /* own prototype — satisfies -Wmissing-prototypes */
 
 #ifndef BLAS_USE_FLOAT
@@ -134,7 +134,7 @@ BLAS_REAL blas_dot_neon(blas_int n,
  * Same structure as blas_dot_kahan_avx2: 4 independent Kahan-compensated
  * float64x2_t accumulator pairs, running 8 streams in parallel.
  * Same -ffast-math caveat applies — strict IEEE 754 (no -ffast-math) is
- * this project's DEFAULT build for exactly this reason; -DBLAS1_STRICT_IEEE=OFF
+ * this project's DEFAULT build for exactly this reason; -DLINE1_STRICT_IEEE=OFF
  * opts in to -ffast-math (and gives up this guarantee).
  *
  * KNOWN LIMITATION -- overflow-to-NaN: same as dot_avx2.c's

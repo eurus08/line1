@@ -68,7 +68,7 @@
 #include <immintrin.h>   /* AVX2 + FMA intrinsics */
 #include <stddef.h>      /* size_t */
 
-#include "blas1/types.h"
+#include "line1/types.h"
 #include "dot_avx2.h"    /* own prototype — satisfies -Wmissing-prototypes */
 
 /* Compile-time guard: these intrinsics are written for double precision.
@@ -78,7 +78,7 @@
 /* double build — proceed */
 #else
 #  error "dot_avx2.c uses _pd (packed double) intrinsics and cannot be compiled \
-for float precision (-DBLAS_USE_FLOAT). Set BLAS1_SIMD_BACKEND to generic for \
+for float precision (-DBLAS_USE_FLOAT). Set LINE1_SIMD_BACKEND to generic for \
 float builds, or add a _ps (packed single) variant."
 #endif
 
@@ -200,7 +200,7 @@ BLAS_REAL blas_dot_avx2(blas_int n,
  * may reassociate the Kahan compensation steps even with explicit intrinsics,
  * because -ffast-math applies to the whole translation unit. Strict IEEE 754
  * (no -ffast-math) is this project's DEFAULT build for exactly this reason;
- * -DBLAS1_STRICT_IEEE=OFF opts in to -ffast-math (and gives up this
+ * -DLINE1_STRICT_IEEE=OFF opts in to -ffast-math (and gives up this
  * guarantee).
  *
  * KNOWN LIMITATION -- overflow-to-NaN (same bug class as src/asum.c and

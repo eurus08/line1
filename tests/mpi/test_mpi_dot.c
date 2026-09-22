@@ -20,9 +20,9 @@
  * divisible case.
  */
 
-#include "blas1/mpi/mpi_dot.h"
-#include "blas1/dot.h"
-#include "blas1/types.h"
+#include "line1/mpi/mpi_dot.h"
+#include "line1/dot.h"
+#include "line1/types.h"
 
 #include <mpi.h>
 #include <math.h>
@@ -54,7 +54,7 @@ static void check_abs(const char *name, BLAS_REAL result, BLAS_REAL expected, BL
  * `size` ranks as evenly as possible. Ranks 0..(n_global % size - 1)
  * get one extra element; every rank gets a contiguous, non-
  * overlapping slice, and the slices cover the whole vector exactly
- * once. This is the same scheme any caller of the MPI BLAS1 layer
+ * once. This is the same scheme any caller of the MPI LINE1 layer
  * would need to implement -- these test files double as a worked
  * example of it.
  */

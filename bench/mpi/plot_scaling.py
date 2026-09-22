@@ -129,7 +129,7 @@ def plot_strong_scaling(rows, out_path: Path, physical_cores: int):
     # Physical-core reference line: past this point, additional ranks
     # share a physical core via SMT/hyperthreading rather than getting
     # one of their own. Memory-bandwidth-bound work (which is exactly
-    # what BLAS1 is -- see the Phase 4 bench notes) typically shows a
+    # what LINE1 is -- see the Phase 4 bench notes) typically shows a
     # visible knee right here, since hyperthread siblings on the same
     # core compete for the same memory bandwidth path rather than
     # adding real throughput. Drawn on BOTH panels, not just one, so

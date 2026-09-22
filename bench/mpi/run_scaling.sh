@@ -33,7 +33,7 @@
 #
 # If no path is given, defaults to ./build/bench/mpi/bench_mpi_dot
 # (i.e. run this from the repository root after a normal
-# `cmake -B build -DBLAS1_BUILD_MPI=ON -DBLAS1_BUILD_BENCH=ON` build).
+# `cmake -B build -DLINE1_BUILD_MPI=ON -DLINE1_BUILD_BENCH=ON` build).
 #
 # RANK_COUNTS and the two fixed sizes below are the obvious things to
 # edit for your own machine -- e.g. set RANK_COUNTS to match your
@@ -49,7 +49,7 @@ BENCH="${1:-./build/bench/mpi/bench_mpi_dot}"
 
 if [ ! -x "$BENCH" ]; then
     echo "error: $BENCH not found or not executable." >&2
-    echo "Build with: cmake -B build -DBLAS1_BUILD_MPI=ON -DBLAS1_BUILD_BENCH=ON && cmake --build build --parallel" >&2
+    echo "Build with: cmake -B build -DLINE1_BUILD_MPI=ON -DLINE1_BUILD_BENCH=ON && cmake --build build --parallel" >&2
     exit 1
 fi
 

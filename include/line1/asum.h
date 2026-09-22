@@ -4,10 +4,10 @@
  * @brief Sum of absolute values (L1 norm) of a vector.
  */
 
-#ifndef BLAS1_ASUM_H
-#define BLAS1_ASUM_H
+#ifndef LINE1_ASUM_H
+#define LINE1_ASUM_H
 
-#include "blas1/types.h"
+#include "line1/types.h"
 
 /**
  * @ingroup serial
@@ -30,4 +30,4 @@ BLAS_REAL blas_asum(
     blas_int            incx
 );
 
-#endif /* BLAS1_ASUM_H */
+#endif /* LINE1_ASUM_H */

@@ -4,10 +4,10 @@
  * @brief Scale a vector in place (x = alpha*x).
  */
 
-#ifndef BLAS1_SCAL_H
-#define BLAS1_SCAL_H
+#ifndef LINE1_SCAL_H
+#define LINE1_SCAL_H
 
-#include "blas1/types.h"
+#include "line1/types.h"
 
 /**
  * @ingroup serial
@@ -38,4 +38,4 @@ void blas_scal(
     blas_int      incx
 );
 
-#endif /* BLAS1_SCAL_H */
+#endif /* LINE1_SCAL_H */

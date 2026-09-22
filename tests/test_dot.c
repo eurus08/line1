@@ -9,7 +9,7 @@
  *     Double (default):
  *       TOL_LOOSE  1e-10   standard dot:  error grows as O(n * eps)
  *       TOL_TIGHT  1e-12   Kahan dot:     error stays at O(eps) regardless of n
- *     Float (-DBLAS1_USE_FLOAT=ON):
+ *     Float (-DLINE1_USE_FLOAT=ON):
  *       TOL_LOOSE  2e-5    float has ~1.19e-7 epsilon vs double's ~2.22e-16,
  *       TOL_TIGHT  2e-6    so both bounds are widened by a similar factor —
  *                          Kahan still stays measurably tighter than
@@ -28,8 +28,8 @@
  *   A non-zero exit code means at least one test failed.
  */
 
-#include "blas1/dot.h"
-#include "blas1/types.h"
+#include "line1/dot.h"
+#include "line1/types.h"
 
 #include <math.h>    /* fabs, sqrt */
 #include <stdio.h>   /* printf */

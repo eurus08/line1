@@ -1,6 +1,6 @@
 # .github/workflows/ci.yml — Phase 7, step 7.3
 #
-# Builds and tests blas1 on every push/PR, across three platforms:
+# Builds and tests line1 on every push/PR, across three platforms:
 #   - Linux x86_64  (ubuntu-latest)
 #   - Linux ARM64   (ubuntu-24.04-arm -- free for public repos, GA
 #                    since August 2025; see actions/partner-runner-images)
@@ -8,7 +8,7 @@
 #                    macOS 14, so this is ALSO an ARM64 job)
 #
 # Each platform builds TWICE: once with the serial library only
-# (BLAS1_BUILD_MPI=OFF, the default most consumers will actually
+# (LINE1_BUILD_MPI=OFF, the default most consumers will actually
 # build), and once with the full MPI layer enabled. A separate job
 # builds Debug with sanitizers on -- this exact configuration once
 # had a real bug (see cmake/CompilerFlags.cmake's comment on
@@ -87,9 +87,9 @@ jobs:
       - name: Configure (MPI + benchmarks)
         run: >
           cmake -B build-mpi -DCMAKE_BUILD_TYPE=Release
-          -DBLAS1_BUILD_MPI=ON
-          -DBLAS1_BUILD_BENCH=ON
-          -DBLAS1_MPI_TEST_NPROCS=4
+          -DLINE1_BUILD_MPI=ON
+          -DLINE1_BUILD_BENCH=ON
+          -DLINE1_MPI_TEST_NPROCS=4
           -DMPIEXEC_PREFLAGS=--oversubscribe
 
       - name: Build (MPI)
@@ -111,8 +111,8 @@ jobs:
       - name: Configure (Debug, MPI on)
         run: >
           cmake -B build-debug -DCMAKE_BUILD_TYPE=Debug
-          -DBLAS1_BUILD_MPI=ON
-          -DBLAS1_MPI_TEST_NPROCS=4
+          -DLINE1_BUILD_MPI=ON
+          -DLINE1_MPI_TEST_NPROCS=4
           -DMPIEXEC_PREFLAGS=--oversubscribe
 
       - name: Build (Debug)
