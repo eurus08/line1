@@ -69,9 +69,10 @@ BLAS_REAL blas_dot_generic(blas_int n,
         return sum;
     }
 
-    /* General strided path */
-    blas_int ix = 0;
-    blas_int iy = 0;
+    /* General strided path — supports negative incx/incy, matching
+     * reference BLAS's DDOT (see blas_stride_start() in types.h). */
+    blas_int ix = blas_stride_start(n, incx);
+    blas_int iy = blas_stride_start(n, incy);
     for (blas_int i = 0; i < n; i++) {
         sum += x[ix] * y[iy];
         ix += incx;
@@ -85,8 +86,28 @@ BLAS_REAL blas_dot_generic(blas_int n,
  *
  * Same algorithm as the original src/dot.c blas_dot_kahan(). The -ffast-math
  * caveat (which can eliminate the compensation) applies here identically —
- * see src/dot.c for the full discussion. Use -DBLAS1_STRICT_IEEE=ON if
- * the Kahan compensation must be preserved through optimisation.
+ * see src/dot.c for the full discussion. Strict IEEE 754 (no -ffast-math)
+ * is this project's DEFAULT build for exactly this reason; opt out with
+ * -DBLAS1_STRICT_IEEE=OFF only once throughput has been judged worth it.
+ *
+ * Overflow handling (same fix as src/asum.c, same bug class):
+ *   Once `sum` overflows to +-Inf, the compensation term `c` typically
+ *   becomes infinite too, and the NEXT term's `t = product - c`
+ *   becomes an opposite-signed infinity -- so `sum + t` computes
+ *   Inf + (-Inf) (or the mirror image), which IEEE 754 defines as
+ *   NaN, even though plain uncompensated summation would have stayed
+ *   at a well-defined +-Inf. Once blas_is_inf(sum) is true, this
+ *   degrades to plain addition (`sum = sum + product`), matching what
+ *   naive summation would do from that point forward -- "Kahan never
+ *   does worse than naive summation."
+ *
+ *   Note this does NOT special-case the case where `sum` and the
+ *   incoming term are infinite with OPPOSITE signs (e.g. sum is +Inf
+ *   and a later product is -Inf): that is a genuine mathematical
+ *   indeterminate form (the true dot product would depend on exactly
+ *   how each side grew to infinity), and naive summation would also
+ *   produce NaN there -- so NaN in that specific case is correct, not
+ *   a bug, and this fix intentionally does not suppress it.
  * ------------------------------------------------------------------------- */
 BLAS_REAL blas_dot_kahan_generic(blas_int n,
                                   const BLAS_REAL * BLAS_RESTRICT x, blas_int incx,
@@ -101,7 +122,12 @@ BLAS_REAL blas_dot_kahan_generic(blas_int n,
 
     if (incx == 1 && incy == 1) {
         for (blas_int i = 0; i < n; i++) {
-            BLAS_REAL t       = x[i] * y[i] - c;
+            BLAS_REAL p = x[i] * y[i];
+            if (BLAS_UNLIKELY(blas_is_inf(sum))) {
+                sum = sum + p;
+                continue;
+            }
+            BLAS_REAL t       = p - c;
             BLAS_REAL new_sum = sum + t;
             c   = (new_sum - sum) - t;
             sum = new_sum;
@@ -109,10 +135,17 @@ BLAS_REAL blas_dot_kahan_generic(blas_int n,
         return sum;
     }
 
-    blas_int ix = 0;
-    blas_int iy = 0;
+    blas_int ix = blas_stride_start(n, incx);
+    blas_int iy = blas_stride_start(n, incy);
     for (blas_int i = 0; i < n; i++) {
-        BLAS_REAL t       = x[ix] * y[iy] - c;
+        BLAS_REAL p = x[ix] * y[iy];
+        if (BLAS_UNLIKELY(blas_is_inf(sum))) {
+            sum = sum + p;
+            ix += incx;
+            iy += incy;
+            continue;
+        }
+        BLAS_REAL t       = p - c;
         BLAS_REAL new_sum = sum + t;
         c   = (new_sum - sum) - t;
         sum = new_sum;

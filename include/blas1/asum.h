@@ -17,8 +17,12 @@
  *
  * @param n     Number of elements.
  * @param x     Input vector (read-only).
- * @param incx  Stride for @p x.
- * @return The sum of absolute values (always &ge; 0).
+ * @param incx  Stride for @p x. Must be > 0 -- matching reference BLAS's
+ *              DASUM, this does NOT support negative increments (unlike
+ *              blas_dot()/blas_axpy(), which do). @p incx &le; 0 returns
+ *              0.0 immediately rather than reading out of bounds.
+ * @return The sum of absolute values (always &ge; 0), or 0.0 if
+ *         @p n &le; 0 or @p incx &le; 0.
  */
 BLAS_REAL blas_asum(
     blas_int            n,

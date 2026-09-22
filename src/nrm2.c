@@ -66,7 +66,9 @@
  *   The scaled terms are all in [0, 1], so overflow is gone. But we still
  *   accumulate n terms and rounding error grows with n. Kahan keeps it at
  *   O(eps) regardless of n. Same -ffast-math caveat as dot.c applies —
- *   build with -DBLAS1_STRICT_IEEE=ON if the compensation must survive.
+ *   this is why strict IEEE 754 (no -ffast-math) is this project's
+ *   DEFAULT build; opt out with -DBLAS1_STRICT_IEEE=OFF only once
+ *   you've decided the throughput is worth losing this guarantee.
  *
  * Stride support:
  *   blas_iamax handles pass 1 with full stride support. Pass 2 mirrors
@@ -82,8 +84,14 @@
 BLAS_REAL blas_nrm2(blas_int n,
                     const BLAS_REAL * BLAS_RESTRICT x, blas_int incx)
 {
-    /* Guard: empty vector */
-    if (BLAS_UNLIKELY(n <= 0)) {
+    /* Guard: empty vector, or invalid stride.
+     *
+     * Reference BLAS's DNRM2: "IF (N.LT.1 .OR. INCX.LT.1) ... NORM = ZERO"
+     * -- DNRM2 does NOT support negative increments (unlike DAXPY/DDOT).
+     * See src/asum.c for the full reasoning (same convention, same
+     * out-of-bounds hazard this closes).
+     */
+    if (BLAS_UNLIKELY(n <= 0 || incx <= 0)) {
         return (BLAS_REAL)0.0;
     }
 

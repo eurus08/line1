@@ -208,22 +208,25 @@ static void test_edge_cases(void)
         check_vector("scal alpha=0 with stride 3 zeroes only logical elements", x, expected, 6, ABS_TOL);
     }
 
-    /* Negative stride: pointer points at the last logical element,
-     * stride walks backwards. Mirrors the negative-stride tests in
-     * test_dot.c / test_axpy.c.
-     *
-     * x = [1,2,3], traversed in reverse as 3,2,1 (pointer starts at &x[2])
-     * alpha = 2
-     * Physical result: [2, 4, 6] — traversal order doesn't change the
-     * per-element math here since scal has no second vector, but the
-     * pointer/stride arithmetic must still be correct.
+    /* Negative (or zero) stride: matches reference BLAS's DSCAL
+     * convention exactly -- DSCAL is documented to return immediately,
+     * completely unmodified, for incx <= 0 (unlike DAXPY/DDOT, which
+     * DO support negative strides). This used to walk backward from
+     * the given pointer instead, which read/wrote out of bounds for
+     * any caller passing the true start of the array (the standard
+     * way to call it) with a negative stride.
      */
     {
         BLAS_REAL x[] = {1.0, 2.0, 3.0};
-        BLAS_REAL expected[] = {2.0, 4.0, 6.0};
+        BLAS_REAL expected[] = {1.0, 2.0, 3.0};   /* unchanged */
 
-        blas_scal(3, 2.0, &x[2], -1);
-        check_vector("scal with negative incx", x, expected, 3, ABS_TOL);
+        blas_scal(3, 2.0, x, -1);
+        check_vector("scal with negative incx is a no-op (x unchanged)",
+                     x, expected, 3, ABS_TOL);
+
+        blas_scal(3, 2.0, x, 0);
+        check_vector("scal with incx == 0 is a no-op (x unchanged)",
+                     x, expected, 3, ABS_TOL);
     }
 }
 

@@ -24,9 +24,15 @@
  * @param n     Number of elements.
  * @param alpha Scalar multiplier.
  * @param x     Input vector (read-only).
- * @param incx  Stride for @p x.
+ * @param incx  Stride for @p x. May be negative: matching reference
+ *              BLAS's DAXPY, a negative @p incx walks backward
+ *              through the SAME memory span @p x already points at
+ *              the start of -- the caller does not need to (and
+ *              should not) offset @p x itself. incx == 0 is caller
+ *              error (undefined).
  * @param y     Input/output vector, modified in place.
- * @param incy  Stride for @p y.
+ * @param incy  Stride for @p y. Same negative-stride convention as
+ *              @p incx, independently.
  */
 void blas_axpy(
     blas_int            n,

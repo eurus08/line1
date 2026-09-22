@@ -75,10 +75,11 @@ BLAS_REAL blas_dot_neon(blas_int n,
         return 0.0;
     }
 
-    /* Strided fallback */
+    /* Strided fallback — supports negative incx/incy (blas_stride_start). */
     if (incx != 1 || incy != 1) {
         double sum = 0.0;
-        blas_int ix = 0, iy = 0;
+        blas_int ix = blas_stride_start(n, incx);
+        blas_int iy = blas_stride_start(n, incy);
         for (blas_int i = 0; i < n; i++) {
             sum += x[ix] * y[iy];
             ix += incx;
@@ -132,8 +133,15 @@ BLAS_REAL blas_dot_neon(blas_int n,
  *
  * Same structure as blas_dot_kahan_avx2: 4 independent Kahan-compensated
  * float64x2_t accumulator pairs, running 8 streams in parallel.
- * Same -ffast-math caveat applies — build with -DBLAS1_STRICT_IEEE=ON
- * if the compensation must survive the optimiser.
+ * Same -ffast-math caveat applies — strict IEEE 754 (no -ffast-math) is
+ * this project's DEFAULT build for exactly this reason; -DBLAS1_STRICT_IEEE=OFF
+ * opts in to -ffast-math (and gives up this guarantee).
+ *
+ * KNOWN LIMITATION -- overflow-to-NaN: same as dot_avx2.c's
+ * blas_dot_kahan_avx2 (see its comment for the full explanation and
+ * why a per-element scalar guard doesn't translate directly to the
+ * unit-stride SIMD path below). Fixed here in the scalar strided
+ * fallback; not yet fixed in the unit-stride float64x2_t path.
  * ------------------------------------------------------------------------- */
 BLAS_REAL blas_dot_kahan_neon(blas_int n,
                                const BLAS_REAL * BLAS_RESTRICT x, blas_int incx,
@@ -143,12 +151,21 @@ BLAS_REAL blas_dot_kahan_neon(blas_int n,
         return 0.0;
     }
 
-    /* Strided fallback */
+    /* Strided fallback -- overflow-to-NaN fix applied, see KNOWN
+     * LIMITATION above for the unit-stride SIMD path below. */
     if (incx != 1 || incy != 1) {
         double sum = 0.0, c = 0.0;
-        blas_int ix = 0, iy = 0;
+        blas_int ix = blas_stride_start(n, incx);
+        blas_int iy = blas_stride_start(n, incy);
         for (blas_int i = 0; i < n; i++) {
-            double t       = x[ix] * y[iy] - c;
+            double p = x[ix] * y[iy];
+            if (BLAS_UNLIKELY(blas_is_inf(sum))) {
+                sum = sum + p;
+                ix += incx;
+                iy += incy;
+                continue;
+            }
+            double t       = p - c;
             double new_sum = sum + t;
             c   = (new_sum - sum) - t;
             sum = new_sum;
@@ -157,6 +174,7 @@ BLAS_REAL blas_dot_kahan_neon(blas_int n,
         }
         return sum;
     }
+
 
     /* ----------------------------------------------------------------
      * Unit-stride Kahan NEON path

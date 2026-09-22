@@ -131,7 +131,8 @@ BLAS_REAL blas_dot_avx2(blas_int n,
      * ---------------------------------------------------------------- */
     if (incx != 1 || incy != 1) {
         double sum = 0.0;
-        blas_int ix = 0, iy = 0;
+        blas_int ix = blas_stride_start(n, incx);
+        blas_int iy = blas_stride_start(n, incy);
         for (blas_int i = 0; i < n; i++) {
             sum += x[ix] * y[iy];
             ix += incx;
@@ -197,9 +198,29 @@ BLAS_REAL blas_dot_avx2(blas_int n,
  *
  * The -ffast-math caveat from dot_generic.c applies here too: the compiler
  * may reassociate the Kahan compensation steps even with explicit intrinsics,
- * because -ffast-math applies to the whole translation unit. Build with
- * -DBLAS1_STRICT_IEEE=ON (which removes -ffast-math from CompilerFlags.cmake)
- * if the compensation must be guaranteed to survive.
+ * because -ffast-math applies to the whole translation unit. Strict IEEE 754
+ * (no -ffast-math) is this project's DEFAULT build for exactly this reason;
+ * -DBLAS1_STRICT_IEEE=OFF opts in to -ffast-math (and gives up this
+ * guarantee).
+ *
+ * KNOWN LIMITATION -- overflow-to-NaN (same bug class as src/asum.c and
+ * kernel/generic/dot_generic.c, NOT yet fixed here):
+ *   Once a running sum overflows to +-Inf, the compensation term can
+ *   itself become infinite, and the next term's `t = product - c`
+ *   becomes an opposite-signed infinity -- so `new_s = s + t` computes
+ *   Inf + (-Inf) == NaN, even where plain summation would have stayed
+ *   at a well-defined +-Inf. dot_generic.c's blas_dot_kahan_generic()
+ *   and asum.c fix this with a per-element `if (blas_is_inf(sum))`
+ *   guard that falls back to plain addition. The strided fallback
+ *   below (scalar) has the same fix applied. The unit-stride path
+ *   below it does NOT: it runs 16 independent Kahan streams across
+ *   4 __m256d accumulators, and applying the same guard correctly
+ *   there means a per-LANE blend (via _mm256_cmp_pd + a bit-pattern
+ *   mask + _mm256_blendv_pd), not a single scalar branch. That is a
+ *   more invasive change to hand-written intrinsics and has been left
+ *   for a follow-up rather than rushed into this pass -- vectors that
+ *   overflow mid-dot-product on THIS path can still produce a
+ *   spurious NaN where the true answer is +-Inf.
  * ------------------------------------------------------------------------- */
 BLAS_REAL blas_dot_kahan_avx2(blas_int n,
                                 const BLAS_REAL * BLAS_RESTRICT x, blas_int incx,
@@ -209,12 +230,22 @@ BLAS_REAL blas_dot_kahan_avx2(blas_int n,
         return 0.0;
     }
 
-    /* Strided fallback — same reasoning as blas_dot_avx2 */
+    /* Strided fallback — same reasoning as blas_dot_avx2, and the same
+     * overflow-to-NaN fix as dot_generic.c (see KNOWN LIMITATION above
+     * for why the unit-stride SIMD path below does not yet have it). */
     if (incx != 1 || incy != 1) {
         double sum = 0.0, c = 0.0;
-        blas_int ix = 0, iy = 0;
+        blas_int ix = blas_stride_start(n, incx);
+        blas_int iy = blas_stride_start(n, incy);
         for (blas_int i = 0; i < n; i++) {
-            double t       = x[ix] * y[iy] - c;
+            double p = x[ix] * y[iy];
+            if (BLAS_UNLIKELY(blas_is_inf(sum))) {
+                sum = sum + p;
+                ix += incx;
+                iy += incy;
+                continue;
+            }
+            double t       = p - c;
             double new_sum = sum + t;
             c   = (new_sum - sum) - t;
             sum = new_sum;

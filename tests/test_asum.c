@@ -157,16 +157,18 @@ static void test_edge_cases(void)
         check_abs("asum with stride 2 ignores gap elements", result, 6.0, ABS_TOL);
     }
 
-    /* Negative stride: pointer points at the last logical element,
-     * stride walks backwards. Summation is order-dependent in theory
-     * (floating point is not associative), but for these small clean
-     * values the result must still match exactly.
-     * x = [1,-2,3], traversed in reverse as 3,-2,1 (pointer starts at &x[2])
-     * asum = |3| + |-2| + |1| = 6 */
+    /* Negative (or zero) stride: matches reference BLAS's DASUM
+     * convention exactly -- "modified 3/93 to return if incx .le. 0."
+     * DASUM does NOT support negative strides (unlike DAXPY/DDOT).
+     * This used to walk backward from the given pointer instead, which
+     * read out of bounds for any caller passing the true start of the
+     * array (the standard way to call it) with a negative stride. */
     {
         BLAS_REAL x[] = {1.0, -2.0, 3.0};
-        BLAS_REAL result = blas_asum(3, &x[2], -1);
-        check_abs("asum with negative incx == 6", result, 6.0, ABS_TOL);
+        check_abs("asum with negative incx returns 0.0",
+                  blas_asum(3, x, -1), 0.0, ABS_TOL);
+        check_abs("asum with incx == 0 returns 0.0",
+                  blas_asum(3, x, 0), 0.0, ABS_TOL);
     }
 
     /* Zeros interspersed: |0| + |2| + |0| + |4| = 6 */
@@ -358,6 +360,51 @@ static void test_precision_many_small_terms(void)
 }
 
 /* ------------------------------------------------------------------ */
+/*  Overflow handling                                                    */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Regression test for a real bug: asum({1e308, 1e308, 1e308}) used to
+ * return NaN instead of +Inf.
+ *
+ * Root cause: once the Kahan running sum overflows to +Inf, the
+ * compensation term can itself become +Inf, and the next term's
+ * `t = ax - c` becomes -Inf -- so `sum + t` computes Inf + (-Inf),
+ * which IEEE 754 defines as NaN, even though every term summed is a
+ * non-negative, finite magnitude and plain (uncompensated) summation
+ * of the same values correctly overflows straight to +Inf with no NaN
+ * involved. See src/asum.c's file header comment for the full
+ * mechanism and fix (falling back to plain addition once the running
+ * sum is already infinite).
+ */
+static void test_overflow(void)
+{
+    printf("-- overflow test (regression: asum({1e308,...}) used to return NaN) --\n");
+
+    {
+        BLAS_REAL x[3] = { (BLAS_REAL)1e308, (BLAS_REAL)1e308, (BLAS_REAL)1e308 };
+        BLAS_REAL result = blas_asum(3, x, 1);
+        report(isinf((double)result) && (double)result > 0.0,
+               "asum({1e308, 1e308, 1e308}) is +Inf, not NaN",
+               (double)result, 1.0/0.0);
+    }
+
+    /* Overflow partway through a longer vector, with finite terms
+     * both before and after the point where sum first overflows --
+     * exercises the "keep adding subsequent finite terms once sum is
+     * already Inf" path, not just the single overflowing addition. */
+    {
+        BLAS_REAL x[5] = { (BLAS_REAL)1.0, (BLAS_REAL)1e308,
+                           (BLAS_REAL)1e308, (BLAS_REAL)1e308,
+                           (BLAS_REAL)2.0 };
+        BLAS_REAL result = blas_asum(5, x, 1);
+        report(isinf((double)result) && (double)result > 0.0,
+               "asum with overflow partway through, finite terms after, is +Inf",
+               (double)result, 1.0/0.0);
+    }
+}
+
+/* ------------------------------------------------------------------ */
 /*  main                                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -369,6 +416,7 @@ int main(void)
     test_edge_cases();
     test_precision_well_conditioned();
     test_precision_many_small_terms();
+    test_overflow();
 
     printf("\n%d/%d checks passed\n", g_checks - g_failures, g_checks);
 

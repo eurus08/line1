@@ -15,7 +15,11 @@ BLAS (Basic Linear Algebra Subprograms) is the specification underneath nearly e
 | `asum` | Sum of absolute values | `Σ |xᵢ|` |
 | `iamax` | Index of the largest-magnitude element | `argmax |xᵢ|` |
 
-Every function supports non-unit strides (`incx`/`incy`), matching the real BLAS calling convention where vector elements aren't always contiguous in memory.
+Every function supports non-unit strides (`incx`/`incy`), matching the real BLAS calling convention where vector elements aren't always contiguous in memory. **The sign convention differs by function, matching reference BLAS exactly rather than a single library-wide rule:**
+- `dot` and `axpy` support **negative** strides — a negative `incx`/`incy` walks backward through the same memory span the pointer already points at the start of (no caller-side pointer offset needed), matching reference BLAS's `DDOT`/`DAXPY`.
+- `scal`, `nrm2`, `asum`, and `iamax` do **not** support negative (or zero) strides, matching reference BLAS's `DSCAL`/`DNRM2`/`DASUM`/`IDAMAX` exactly: `incx <= 0` returns a zero/no-op result immediately rather than reading or writing out of bounds.
+
+`incx == 0`/`incy == 0` is caller error for `dot`/`axpy` (undefined — real BLAS doesn't define it either) and is explicitly guarded to a zero/no-op result for the other four.
 
 ## Requirements
 
@@ -42,7 +46,7 @@ ctest --test-dir build
 | `BLAS1_BUILD_BENCH` | `OFF` | Build the benchmark suite (`bench_dot`, `bench_axpy`, and the MPI scaling benchmark) |
 | `BLAS1_BUILD_MPI` | `OFF` | Build the MPI parallel layer, its tests, and its benchmark |
 | `BLAS1_USE_FLOAT` | `OFF` | Build in single precision (`float`) instead of `double` |
-| `BLAS1_STRICT_IEEE` | `OFF` | Disable `-ffast-math`, for callers who need guaranteed IEEE-compliant rounding (e.g. Kahan compensation to survive exactly as written) |
+| `BLAS1_STRICT_IEEE` | `ON` | Strict IEEE 754 compliance — no `-ffast-math`. **Default**, deliberately: this library's pitch is careful, numerically robust arithmetic (Kahan-compensated summation, overflow/underflow-safe `nrm2`, explicit `Inf`/`NaN` handling), and `-ffast-math` actively undermines that — confirmed directly (by inspecting generated assembly, not just documented) to eliminate this library's own `Inf`/`NaN`-handling branches and to reduce `blas_dot_kahan()` to bit-identical output with plain `blas_dot()`, silently making the Kahan variant do nothing useful. Set to `OFF` to opt in to `-ffast-math` for maximum throughput once you've decided that trade-off is worth it for your use case — see "Numerical robustness vs. raw throughput" below |
 | `BLAS1_BUILD_SHARED` | `OFF` | Also build `libblas1.so` (properly versioned, `libblas1.so.1.0.0` with `.so.1`/`.so` symlinks) alongside the always-built static `libblas1.a` |
 
 With the MPI layer and benchmarks both enabled:
@@ -54,6 +58,19 @@ ctest --test-dir build          # runs serial + MPI tests + benchmark smoke test
 ```
 
 Architecture-specific SIMD kernels (AVX2 on x86, NEON on ARM) are detected and selected automatically at configure time — no flag needed. If neither is available, a portable scalar fallback is used, and this is reported in the configure output either way.
+
+### Numerical robustness vs. raw throughput
+
+The **default** build (`BLAS1_STRICT_IEEE=ON`) is strict IEEE 754: no `-ffast-math`. This is a deliberate choice, not an oversight — this library's whole pitch is careful, numerically robust arithmetic, and `-ffast-math` actively works against that:
+
+- `-ffast-math` implies `-ffinite-math-only`, which entitles the compiler to assume no floating-point value is ever `Inf` or `NaN`. Confirmed directly by inspecting the generated assembly (not just documented as a theoretical risk): under this flag, GCC dead-code-eliminates the `Inf`-handling guards `nrm2()` and `asum()` depend on to return a correct `+Inf` (instead of a spurious `NaN`) for input containing infinities.
+- `-ffast-math` permits floating-point reassociation, which is confirmed to reduce `blas_dot_kahan()` on this project's own Release flags to bit-identical output with the uncompensated `blas_dot()` — silently making the "Kahan" variant pay for extra arithmetic while providing none of its accuracy benefit.
+
+Set `-DBLAS1_STRICT_IEEE=OFF` to opt in to `-ffast-math` for maximum throughput, once you've specifically decided that trade-off is worth it — this matches what OpenBLAS and MKL do by default, but here it's an explicit choice rather than a silent one. Benchmarks (`bench/`) always build with `-ffast-math` regardless of this setting, since raw best-case throughput is exactly what a benchmark should report; this option only affects the library callers actually link against.
+
+### A note on portability: `-march=native`
+
+Release builds (with either `BLAS1_STRICT_IEEE` setting) use `-march=native` by default, which tunes code generation for the exact CPU the library is *compiled* on — using AVX2/FMA/NEON instructions if that machine has them. **A `-march=native` build is not portable**: the resulting binary can crash with `SIGILL` (illegal instruction) if copied to and run on a different, older, or otherwise less-capable CPU than the one it was built on. This is fine (and standard practice) for building and running on the same machine, or in a container image that will only ever run on matching hardware. If you're building a binary or shared library that will be distributed to or run on machines you don't control, override the architecture flag yourself (e.g. `-march=x86-64-v2` for a broad-but-still-modern x86_64 baseline, or drop `-march` entirely) rather than relying on the default.
 
 ## Installing
 
@@ -140,13 +157,13 @@ python3 bench/mpi/plot_scaling.py
 
 | Function | Signature | Notes |
 |---|---|---|
-| `blas_dot` | `BLAS_REAL blas_dot(blas_int n, const BLAS_REAL *x, blas_int incx, const BLAS_REAL *y, blas_int incy)` | |
+| `blas_dot` | `BLAS_REAL blas_dot(blas_int n, const BLAS_REAL *x, blas_int incx, const BLAS_REAL *y, blas_int incy)` | Supports negative strides (see stride note above) |
 | `blas_dot_kahan` | same signature as `blas_dot` | Kahan-compensated summation, for callers who need reduced rounding error at some extra cost |
 | `blas_axpy` | `void blas_axpy(blas_int n, BLAS_REAL alpha, const BLAS_REAL *x, blas_int incx, BLAS_REAL *y, blas_int incy)` | `alpha == 0` is a fast no-op path |
-| `blas_scal` | `void blas_scal(blas_int n, BLAS_REAL alpha, BLAS_REAL *x, blas_int incx)` | `alpha == 0` explicitly zeroes (never multiplies), avoiding NaN propagation |
-| `blas_nrm2` | `BLAS_REAL blas_nrm2(blas_int n, const BLAS_REAL *x, blas_int incx)` | Scaled two-pass algorithm (Blue 1978 / LAPACK `dnrm2`) — avoids overflow/underflow that a naive `sqrt(sum(x[i]*x[i]))` would hit on extreme-magnitude input |
-| `blas_asum` | `BLAS_REAL blas_asum(blas_int n, const BLAS_REAL *x, blas_int incx)` | |
-| `blas_iamax` | `blas_int blas_iamax(blas_int n, const BLAS_REAL *x, blas_int incx)` | 1-based index (BLAS/Fortran convention); returns `0` for `n <= 0` |
+| `blas_scal` | `void blas_scal(blas_int n, BLAS_REAL alpha, BLAS_REAL *x, blas_int incx)` | `alpha == 0` explicitly zeroes (never multiplies), avoiding NaN propagation. `incx <= 0` is a no-op (see stride note above) |
+| `blas_nrm2` | `BLAS_REAL blas_nrm2(blas_int n, const BLAS_REAL *x, blas_int incx)` | Scaled two-pass algorithm (Blue 1978 / LAPACK `dnrm2`) — avoids overflow/underflow that a naive `sqrt(sum(x[i]*x[i]))` would hit on extreme-magnitude input. Returns `+Inf` (not `NaN`) for a vector containing `Inf`; returns `0.0` for `incx <= 0` |
+| `blas_asum` | `BLAS_REAL blas_asum(blas_int n, const BLAS_REAL *x, blas_int incx)` | Returns `0.0` for `incx <= 0` (see stride note above) |
+| `blas_iamax` | `blas_int blas_iamax(blas_int n, const BLAS_REAL *x, blas_int incx)` | 1-based index (BLAS/Fortran convention); returns `0` for `n <= 0` or `incx <= 0` |
 
 `BLAS_REAL` is `double` by default, `float` if built with `-DBLAS1_USE_FLOAT=ON`. `blas_int` is `int64_t`, to support vectors past 2 billion elements.
 

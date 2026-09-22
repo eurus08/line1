@@ -34,9 +34,10 @@ void blas_axpy_generic(blas_int n,
         return;
     }
 
-    /* General strided path */
-    blas_int ix = 0;
-    blas_int iy = 0;
+    /* General strided path — supports negative incx/incy, matching
+     * reference BLAS's DAXPY (see blas_stride_start() in types.h). */
+    blas_int ix = blas_stride_start(n, incx);
+    blas_int iy = blas_stride_start(n, incy);
     for (blas_int i = 0; i < n; i++) {
         y[iy] += alpha * x[ix];
         ix += incx;

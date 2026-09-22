@@ -303,17 +303,40 @@ static void test_stride(void)
     }
 
     /*
-     * Negative stride: BLAS convention walks backwards through memory.
-     * We point at the LAST physical element and use incx = -1.
-     * x physical = [1, 2, 3], traversed backwards as [3, 2, 1]
-     * y physical = [10, 20, 30], traversed forwards as [10, 20, 30]
+     * Negative stride: matches reference BLAS's DDOT convention. The
+     * caller passes a pointer to the TRUE START of the array (the
+     * normal, standard way to call this) and a negative incx; the
+     * library computes the correct starting offset internally
+     * (blas_stride_start() in types.h) and walks backward from
+     * there, staying within [x[0], x[n-1]] throughout -- it does NOT
+     * expect the caller to pre-offset the pointer to the last
+     * element (that was the bug: doing so read out of bounds for
+     * any caller following the actual BLAS calling convention).
+     *
+     * x = [1, 2, 3], incx = -1: traversed backwards as [3, 2, 1]
+     * y = [10, 20, 30], incy = 1: traversed forwards as [10, 20, 30]
      * Expected: 3*10 + 2*20 + 1*30 = 100
      */
     {
         BLAS_REAL x[] = {1.0, 2.0, 3.0};
         BLAS_REAL y[] = {10.0, 20.0, 30.0};
-        check_abs("dot negative stride x",
-                  blas_dot(3, &x[2], -1, y, 1), 100.0, TOL_TIGHT);
+        check_abs("dot negative stride x (pointer at true array start)",
+                  blas_dot(3, x, -1, y, 1), 100.0, TOL_TIGHT);
+        check_abs("dot_kahan negative stride x (pointer at true array start)",
+                  blas_dot_kahan(3, x, -1, y, 1), 100.0, TOL_TIGHT);
+    }
+
+    /*
+     * Both incx and incy negative simultaneously -- each side's
+     * starting offset is computed independently.
+     * x traversed backwards: [3, 2, 1]; y traversed backwards: [30, 20, 10]
+     * Expected: 3*30 + 2*20 + 1*10 = 90 + 40 + 10 = 140
+     */
+    {
+        BLAS_REAL x[] = {1.0, 2.0, 3.0};
+        BLAS_REAL y[] = {10.0, 20.0, 30.0};
+        check_abs("dot negative stride on both x and y",
+                  blas_dot(3, x, -1, y, -1), 140.0, TOL_TIGHT);
     }
 }
 
@@ -431,6 +454,59 @@ static void test_large_n(void)
 }
 
 /* =========================================================================
+ * Overflow handling
+ * ========================================================================= */
+
+static void check_is_pos_inf(const char *name, BLAS_REAL result)
+{
+    g_tests++;
+    if (isinf((double)result) && (double)result > 0.0) {
+        printf("  PASS  %-45s  got=+Inf\n", name);
+    } else {
+        printf("  FAIL  %-45s  got=%.15g (expected +Inf)\n", name, (double)result);
+        g_failed++;
+    }
+}
+
+/*
+ * Regression test for the same bug class as asum's overflow fix (see
+ * src/asum.c / kernel/generic/dot_generic.c): once a Kahan running sum
+ * overflows to +-Inf, the compensation term can itself become
+ * infinite, and the next term's `t = product - c` becomes an
+ * opposite-signed infinity -- so `sum + t` computes Inf + (-Inf),
+ * which IEEE 754 defines as NaN, even though plain (uncompensated)
+ * summation of the same products would have stayed at a well-defined
+ * +Inf.
+ *
+ * Deliberately uses incx=2/incy=2 (NOT unit stride): blas_dot_kahan()
+ * dispatches to whichever backend this build selected (AVX2 on most
+ * x86_64 machines), and the fix for this bug has only been applied to
+ * the SCALAR paths so far -- every backend's general strided path
+ * (kernel/{generic,x86,arm}/dot_*.c) and the plain generic backend's
+ * unit-stride path, but NOT the AVX2/NEON unit-stride SIMD Kahan
+ * paths, which retrofit the same fix correctly only via a per-lane
+ * mask (see kernel/x86/dot_avx2.c's file header "KNOWN LIMITATION"
+ * comment) and do not yet have it. A unit-stride call here would
+ * silently test that known-broken path instead of the fix, on any
+ * machine where AVX2 (or NEON) gets selected.
+ */
+static void test_overflow(void)
+{
+    printf("\n--- Overflow tests (regression) ---\n");
+
+    {
+        BLAS_REAL x[6] = { (BLAS_REAL)1e200, (BLAS_REAL)0.0,
+                           (BLAS_REAL)1e200, (BLAS_REAL)0.0,
+                           (BLAS_REAL)1e200, (BLAS_REAL)0.0 };
+        BLAS_REAL y[6] = { (BLAS_REAL)1e150, (BLAS_REAL)0.0,
+                           (BLAS_REAL)1e150, (BLAS_REAL)0.0,
+                           (BLAS_REAL)1e150, (BLAS_REAL)0.0 };
+        check_is_pos_inf("dot_kahan (strided) with overflowing products is +Inf, not NaN",
+                          blas_dot_kahan(3, x, 2, y, 2));
+    }
+}
+
+/* =========================================================================
  * main — run all test groups and report
  * ========================================================================= */
 
@@ -445,6 +521,7 @@ int main(void)
     test_stride();
     test_precision_kahan();
     test_large_n();
+    test_overflow();
 
     printf("\n==========================================================\n");
     printf("  Results: %d / %d tests passed\n", g_tests - g_failed, g_tests);

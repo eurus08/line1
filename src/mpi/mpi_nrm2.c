@@ -19,9 +19,9 @@
  *   returned early, before step 3 runs.
  *
  * - Kahan compensation in step 3 mirrors nrm2.c's pass 2 exactly,
- *   same -ffast-math caveat applies (see nrm2.c and the Phase 5
- *   handoff notes: -DBLAS1_STRICT_IEEE=ON if compensation must
- *   survive fast-math's reassociation).
+ *   same -ffast-math caveat applies (see nrm2.c): strict IEEE 754
+ *   (no -ffast-math) is this project's DEFAULT build for exactly
+ *   this reason; -DBLAS1_STRICT_IEEE=OFF opts out.
  */
 
 #include "blas1/mpi/mpi_nrm2.h"

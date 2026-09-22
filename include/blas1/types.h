@@ -143,6 +143,31 @@ BLAS_INLINE int blas_is_inf(BLAS_REAL x)
 }
 
 /**
+ * @brief Compute the correct 0-based starting offset for a BLAS
+ * stride, for routines that support negative increments (matching
+ * reference BLAS's own convention for DAXPY/DDOT).
+ *
+ * Reference BLAS (e.g. DAXPY's Fortran source) initializes its loop
+ * index as `IX = 1; IF (INCX.LT.0) IX = (-N+1)*INCX + 1` (1-based).
+ * This is the 0-based equivalent: `kx = (1-n)*incx` for incx < 0,
+ * else 0.
+ *
+ * For incx > 0, this returns 0 -- walk forward from the given
+ * pointer, as always. For incx < 0, this returns the offset of the
+ * LAST logical element, (n-1)*(-incx), so that starting there and
+ * stepping by incx (negative) walks backward through exactly the
+ * same n elements the caller's pointer spans, staying within
+ * [0, (n-1)*|incx|] throughout -- rather than starting at offset 0
+ * and immediately stepping to a negative (out-of-bounds) offset.
+ *
+ * Only meaningful for callers that have already validated n > 0.
+ */
+BLAS_INLINE blas_int blas_stride_start(blas_int n, blas_int incx)
+{
+    return (incx < 0) ? (1 - n) * incx : 0;
+}
+
+/**
  * @def BLAS_RESTRICT
  * @brief Marks a pointer as non-aliasing.
  *

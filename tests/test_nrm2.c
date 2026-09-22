@@ -214,15 +214,18 @@ static void test_edge_cases(void)
         check_abs("nrm2 with stride 2 ignores gap elements", result, 5.0, ABS_TOL);
     }
 
-    /* Negative stride: pointer points at the last logical element,
-     * stride walks backwards. The norm is direction-independent, so
-     * traversal order must not change the result.
-     * x = [3,4], traversed in reverse (pointer starts at &x[1])
-     * ||[3,4]|| = 5 regardless of traversal order. */
+    /* Negative (or zero) stride: matches reference BLAS's DNRM2
+     * convention exactly -- "IF (N.LT.1 .OR. INCX.LT.1) ... NORM = ZERO".
+     * DNRM2 does NOT support negative strides (unlike DAXPY/DDOT).
+     * This used to walk backward from the given pointer instead, which
+     * read out of bounds for any caller passing the true start of the
+     * array (the standard way to call it) with a negative stride. */
     {
         BLAS_REAL x[] = {3.0, 4.0};
-        BLAS_REAL result = blas_nrm2(2, &x[1], -1);
-        check_abs("nrm2 with negative incx == 5", result, 5.0, ABS_TOL);
+        check_abs("nrm2 with negative incx returns 0.0",
+                  blas_nrm2(2, x, -1), 0.0, ABS_TOL);
+        check_abs("nrm2 with incx == 0 returns 0.0",
+                  blas_nrm2(2, x, 0), 0.0, ABS_TOL);
     }
 }
 

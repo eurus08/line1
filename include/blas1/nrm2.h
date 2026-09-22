@@ -25,8 +25,12 @@
  *
  * @param n     Number of elements.
  * @param x     Input vector (read-only).
- * @param incx  Stride for @p x.
- * @return The Euclidean norm (always &ge; 0).
+ * @param incx  Stride for @p x. Must be > 0 -- matching reference BLAS's
+ *              DNRM2, this does NOT support negative increments (unlike
+ *              blas_dot()/blas_axpy(), which do). @p incx &le; 0 returns
+ *              0.0 immediately rather than reading out of bounds.
+ * @return The Euclidean norm (always &ge; 0), or 0.0 if @p n &le; 0
+ *         or @p incx &le; 0.
  */
 BLAS_REAL blas_nrm2(
     blas_int            n,

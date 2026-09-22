@@ -65,9 +65,10 @@ void blas_axpy_avx2(blas_int n,
                      const BLAS_REAL * BLAS_RESTRICT x, blas_int incx,
                            BLAS_REAL * BLAS_RESTRICT y, blas_int incy)
 {
-    /* Strided fallback */
+    /* Strided fallback — supports negative incx/incy (blas_stride_start). */
     if (incx != 1 || incy != 1) {
-        blas_int ix = 0, iy = 0;
+        blas_int ix = blas_stride_start(n, incx);
+        blas_int iy = blas_stride_start(n, incy);
         for (blas_int i = 0; i < n; i++) {
             y[iy] += alpha * x[ix];
             ix += incx;

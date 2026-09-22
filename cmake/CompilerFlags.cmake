@@ -82,15 +82,33 @@ endif()
 #   - assume no NaN / Inf in input
 #   - replace division with multiply-by-reciprocal
 #
-# This is standard practice in HPC — OpenBLAS and MKL both use it.
-# We enable it for Release only and document it clearly so users
-# know their results may differ slightly from a strict IEEE build.
+# This is standard practice in HPC for raw throughput -- OpenBLAS and
+# MKL both use it -- but it is NOT this library's default, and that is
+# a deliberate choice, not an oversight: this library's whole pitch is
+# careful, numerically robust arithmetic (Kahan-compensated summation,
+# a scaled overflow/underflow-safe nrm2, explicit Inf/NaN handling --
+# see dot.c/asum.c/nrm2.c). -ffast-math actively undermines exactly
+# that: -ffinite-math-only (part of -ffast-math) is entitled to assume
+# no value is ever Inf/NaN, and confirmed here (by inspecting the
+# actual generated assembly, not just reasoned about) to act on that
+# assumption by eliminating the Inf/NaN-handling branches this library
+# depends on -- and floating-point reassociation is confirmed to
+# reduce blas_dot_kahan()'s Kahan compensation to bit-identical output
+# with the uncompensated blas_dot(), silently making the "Kahan"
+# variant do nothing useful for the extra arithmetic it costs. Shipping
+# that as the default, with no clear signal to the caller, would
+# contradict this project's own correctness pitch. Benchmarks (bench/)
+# still build with -ffast-math unconditionally, since raw best-case
+# throughput is exactly what a benchmark should report -- this default
+# is about the LIBRARY build, which callers actually link against.
 #
-# If you need reproducible bit-exact results across compilers,
-# build with -DBLAS1_STRICT_IEEE=ON to disable this flag.
+# Opt in to -ffast-math with -DBLAS1_STRICT_IEEE=OFF once you have
+# specifically decided the throughput is worth those trade-offs for
+# your use case. If you need reproducible bit-exact results across
+# compilers, the default (strict IEEE 754) already gives you that.
 #
 option(BLAS1_STRICT_IEEE
-    "Disable -ffast-math for strict IEEE 754 compliance" OFF)
+    "Strict IEEE 754 compliance (no -ffast-math). Set to OFF to opt in to -ffast-math for maximum throughput." ON)
 
 set(_BLAS1_FLAGS_MATH "")
 
@@ -98,9 +116,12 @@ if(NOT BLAS1_STRICT_IEEE)
     if(IS_GCC OR IS_CLANG)
         list(APPEND _BLAS1_FLAGS_MATH -ffast-math)
     endif()
-    message(STATUS "Fast math: ON  (use -DBLAS1_STRICT_IEEE=ON to disable)")
+    message(STATUS "Fast math: ON  (opted in via -DBLAS1_STRICT_IEEE=OFF -- "
+                   "Kahan compensation and Inf/NaN handling are not guaranteed "
+                   "under this flag; see CompilerFlags.cmake)")
 else()
-    message(STATUS "Fast math: OFF (strict IEEE 754 mode)")
+    message(STATUS "Fast math: OFF (strict IEEE 754 mode -- default; "
+                   "use -DBLAS1_STRICT_IEEE=OFF to opt in to -ffast-math)")
 endif()
 
 # --- Debug flags ---------------------------------------------------- #

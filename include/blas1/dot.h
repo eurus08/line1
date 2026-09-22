@@ -18,8 +18,14 @@
  * @param n     Number of elements.
  * @param x     First input vector (read-only).
  * @param incx  Stride for @p x (1 = contiguous, 2 = every other element, ...).
+ *              May be negative: matching reference BLAS's DDOT, a
+ *              negative @p incx walks backward through the SAME
+ *              memory span @p x already points at the start of --
+ *              the caller does not need to (and should not) offset
+ *              @p x itself. incx == 0 is caller error (undefined).
  * @param y     Second input vector (read-only).
- * @param incy  Stride for @p y.
+ * @param incy  Stride for @p y. Same negative-stride convention as
+ *              @p incx, independently.
  * @return The scalar dot product.
  */
 BLAS_REAL blas_dot(
@@ -42,15 +48,27 @@ BLAS_REAL blas_dot(
  * unknowingly.
  *
  * @note Kahan compensation can be eliminated by aggressive
- *       floating-point reassociation (e.g. @c -ffast-math). Build
- *       with @c -DBLAS1_STRICT_IEEE=ON if the compensation must
- *       survive exactly as written.
+ *       floating-point reassociation (e.g. @c -ffast-math). Strict
+ *       IEEE 754 (no @c -ffast-math) is this project's DEFAULT build
+ *       for exactly this reason; the compensation survives as written
+ *       unless you explicitly opt in to @c -ffast-math with
+ *       @c -DBLAS1_STRICT_IEEE=OFF.
+ *
+ * @note Overflow: once the running sum has overflowed to &plusmn;Inf,
+ *       this falls back to plain addition rather than trusting the
+ *       Kahan compensation term (which can itself become infinite and
+ *       produce a spurious NaN where the true answer is a
+ *       well-defined &plusmn;Inf) -- except on the AVX2/NEON
+ *       unit-stride SIMD paths, where this fallback is not yet
+ *       implemented (known limitation; see kernel/x86/dot_avx2.c).
  *
  * @param n     Number of elements.
  * @param x     First input vector (read-only).
- * @param incx  Stride for @p x.
+ * @param incx  Stride for @p x. May be negative -- same convention as
+ *              blas_dot() (see its documentation).
  * @param y     Second input vector (read-only).
- * @param incy  Stride for @p y.
+ * @param incy  Stride for @p y. Same negative-stride convention as
+ *              @p incx, independently.
  * @return The scalar dot product, computed with Kahan compensation.
  */
 BLAS_REAL blas_dot_kahan(

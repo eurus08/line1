@@ -35,6 +35,9 @@
  * =========================================================================
  *
  *   n <= 0  : return 0  (BLAS standard — signals invalid input)
+ *   incx <= 0 : return 0  (BLAS standard — IDAMAX does not support
+ *               negative or zero increments; checked before n == 1
+ *               below, so it takes precedence even when n == 1)
  *   n == 1  : return 1  (only one element, trivially the maximum)
  *
  * Note: return value 0 is the sentinel for "no valid result". Since normal
@@ -51,7 +54,7 @@
  * the function returns 1 (the initial index, never updated).
  *
  * Stride support:
- *   Same convention as the rest of the library. incx = 1 is the fast path.
+ *   incx must be > 0 (see EDGE CASES above) — incx = 1 is the fast path.
  *   The 1-based return value is an element index, not a memory offset —
  *   the caller uses (result - 1) * incx to get the memory offset.
  */
@@ -63,8 +66,19 @@
 blas_int blas_iamax(blas_int n,
                     const BLAS_REAL * BLAS_RESTRICT x, blas_int incx)
 {
-    /* Guard: empty or invalid vector — return sentinel 0 */
-    if (BLAS_UNLIKELY(n <= 0)) {
+    /* Guard: empty or invalid vector — return sentinel 0.
+     *
+     * Reference BLAS's IDAMAX: "modified 3/93 to return if incx .le. 0."
+     * -- IDAMAX does NOT support negative increments (unlike
+     * DAXPY/DDOT). See src/asum.c for the full reasoning.
+     *
+     * This check must come BEFORE the n==1 special case below, not
+     * after: reference IDAMAX checks incx first unconditionally, so
+     * n==1 with an invalid incx (<=0) still returns the sentinel 0,
+     * not 1. Checking n==1 first would silently accept an invalid
+     * incx whenever n happens to be 1.
+     */
+    if (BLAS_UNLIKELY(n <= 0 || incx <= 0)) {
         return 0;
     }
 

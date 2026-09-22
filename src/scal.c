@@ -31,8 +31,10 @@
  *   (vmulpd on AVX2, fmul on NEON).
  *
  * Stride support:
- *   Same convention as dot.c and axpy.c. Unit-stride fast path for the
- *   common case; general strided path handles everything else.
+ *   incx must be > 0, matching reference BLAS's DSCAL (which returns
+ *   immediately, unmodified, for incx <= 0 -- DSCAL does not support
+ *   negative increments, unlike DAXPY/DDOT). Unit-stride fast path for
+ *   the common case; general strided path handles incx > 1.
  */
 
 #include "blas1/scal.h"
@@ -42,8 +44,17 @@ void blas_scal(blas_int n,
                BLAS_REAL alpha,
                BLAS_REAL * BLAS_RESTRICT x, blas_int incx)
 {
-    /* Guard: nothing to do */
-    if (BLAS_UNLIKELY(n <= 0)) {
+    /* Guard: nothing to do, or invalid stride.
+     *
+     * Reference BLAS's DSCAL: "modified 3/93 to return if incx .le. 0."
+     * -- DSCAL does NOT support negative increments (unlike DAXPY/DDOT,
+     * which do). See src/asum.c for the full reasoning (same
+     * convention, same out-of-bounds hazard this closes: without this
+     * guard, incx < 0 would walk backward from offset 0 on the very
+     * first step of the loops below, writing to memory before the
+     * start of the array).
+     */
+    if (BLAS_UNLIKELY(n <= 0 || incx <= 0)) {
         return;
     }
 

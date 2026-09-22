@@ -25,7 +25,11 @@
  * @param n     Number of elements.
  * @param alpha Scalar multiplier.
  * @param x     Input/output vector, modified in place.
- * @param incx  Stride for @p x.
+ * @param incx  Stride for @p x. Must be > 0 -- matching reference BLAS's
+ *              DSCAL, this does NOT support negative increments (unlike
+ *              blas_dot()/blas_axpy(), which do). @p n &le; 0 or
+ *              @p incx &le; 0 returns immediately without modifying
+ *              @p x, rather than reading/writing out of bounds.
  */
 void blas_scal(
     blas_int      n,

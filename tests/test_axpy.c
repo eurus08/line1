@@ -184,11 +184,17 @@ static void test_edge_cases(void)
                      y, expected, 6, ABS_TOL);
     }
 
-    /* Negative stride: pointer points at the last logical element, stride
-     * walks backwards. Mirrors the negative-stride test in test_dot.c.
+    /* Negative stride: matches reference BLAS's DAXPY convention. The
+     * caller passes a pointer to the TRUE START of the array (the
+     * standard way to call this) and a negative incx; the library
+     * computes the correct starting offset internally
+     * (blas_stride_start() in types.h) rather than expecting the
+     * caller to pre-offset the pointer to the last element (that was
+     * the bug -- doing so read out of bounds for a caller following
+     * the actual BLAS calling convention).
      *
-     * x = [1,2,3], traversed in reverse as 3,2,1 (pointer starts at &x[2])
-     * y = [10,20,30], traversed forwards
+     * x = [1,2,3], incx = -1: traversed in reverse as 3,2,1
+     * y = [10,20,30], incy = 1: traversed forwards
      * alpha = 1
      * y[0] += x traversed first -> 3 :  10 + 3 = 13
      * y[1] += 2                 :       20 + 2 = 22
@@ -199,8 +205,24 @@ static void test_edge_cases(void)
         BLAS_REAL y[] = {10.0, 20.0, 30.0};
         BLAS_REAL expected[] = {13.0, 22.0, 31.0};
 
-        blas_axpy(3, 1.0, &x[2], -1, y, 1);
-        check_vector("axpy with negative incx", y, expected, 3, ABS_TOL);
+        blas_axpy(3, 1.0, x, -1, y, 1);
+        check_vector("axpy with negative incx (pointer at true array start)",
+                     y, expected, 3, ABS_TOL);
+    }
+
+    /* Both incx and incy negative simultaneously.
+     * x traversed backwards: 3,2,1; y traversed backwards means the
+     * results land at y[2],y[1],y[0] respectively.
+     * y[2] += 3 -> 30+3=33 ; y[1] += 2 -> 20+2=22 ; y[0] += 1 -> 10+1=11
+     */
+    {
+        BLAS_REAL x[] = {1.0, 2.0, 3.0};
+        BLAS_REAL y[] = {10.0, 20.0, 30.0};
+        BLAS_REAL expected[] = {11.0, 22.0, 33.0};
+
+        blas_axpy(3, 1.0, x, -1, y, -1);
+        check_vector("axpy with negative incx and negative incy",
+                     y, expected, 3, ABS_TOL);
     }
 
     /* Idempotency / Repeated application

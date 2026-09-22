@@ -200,6 +200,20 @@ static void test_edge_cases(void)
         check_eq("iamax length-1 with nonzero value returns 1", result, 1);
     }
 
+    /* Regression: incx <= 0 must be checked BEFORE the n == 1 special
+     * case, not after -- matching reference BLAS's IDAMAX, which
+     * checks incx unconditionally first. A naive reordering (check
+     * n == 1 before incx) would silently accept an invalid incx
+     * whenever n happens to be 1, returning 1 instead of the sentinel
+     * 0. */
+    {
+        BLAS_REAL x[] = {-42.0};
+        check_eq("iamax with n==1 and incx<=0 still returns sentinel 0 (not 1)",
+                  blas_iamax(1, x, -1), 0);
+        check_eq("iamax with n==1 and incx==0 still returns sentinel 0 (not 1)",
+                  blas_iamax(1, x, 0), 0);
+    }
+
     /*
      * All-zero vector (n > 1): per iamax.c, max_val starts at 0.0 and
      * the comparison is strictly >, so 0.0 > 0.0 is always false and
@@ -226,21 +240,18 @@ static void test_edge_cases(void)
         check_eq("iamax with stride 2 ignores gap elements", result, 2);
     }
 
-    /* Negative stride: pointer points at the last logical element,
-     * stride walks backwards. The RETURNED index is always relative to
-     * traversal order (1-based position in the logical sequence as
-     * walked), matching reference BLAS semantics for strided access.
-     *
-     * x = [1, 8, 2], traversed in reverse as 2, 8, 1
-     * (pointer starts at &x[2], incx = -1)
-     * Logical traversal order: [2, 8, 1]
-     * Maximum is 8, at logical (1-based) position 2.
-     */
+    /* Negative (or zero) stride: matches reference BLAS's IDAMAX
+     * convention exactly -- "modified 3/93 to return if incx .le. 0."
+     * IDAMAX does NOT support negative strides (unlike DAXPY/DDOT).
+     * This used to walk backward from the given pointer instead, which
+     * read out of bounds for any caller passing the true start of the
+     * array (the standard way to call it) with a negative stride. */
     {
         BLAS_REAL x[] = {1.0, 8.0, 2.0};
-        blas_int result = blas_iamax(3, &x[2], -1);
-        check_eq("iamax with negative incx finds max in traversal order (index 2)",
-                  result, 2);
+        check_eq("iamax with negative incx returns sentinel 0",
+                  blas_iamax(3, x, -1), 0);
+        check_eq("iamax with incx == 0 returns sentinel 0",
+                  blas_iamax(3, x, 0), 0);
     }
 }
 
