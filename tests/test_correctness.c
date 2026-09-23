@@ -291,6 +291,7 @@ int main(void)
     test_scal_zero_then_nrm2();
     test_asum_dot_nrm2_consistency();
     test_iamax_as_memory_offset();
+    test_axpy_zero_invariant();
 
     printf("\n%d/%d checks passed\n", g_checks - g_failures, g_checks);
 

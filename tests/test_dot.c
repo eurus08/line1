@@ -478,17 +478,9 @@ static void check_is_pos_inf(const char *name, BLAS_REAL result)
  * summation of the same products would have stayed at a well-defined
  * +Inf.
  *
- * Deliberately uses incx=2/incy=2 (NOT unit stride): blas_dot_kahan()
- * dispatches to whichever backend this build selected (AVX2 on most
- * x86_64 machines), and the fix for this bug has only been applied to
- * the SCALAR paths so far -- every backend's general strided path
- * (kernel/{generic,x86,arm}/dot_*.c) and the plain generic backend's
- * unit-stride path, but NOT the AVX2/NEON unit-stride SIMD Kahan
- * paths, which retrofit the same fix correctly only via a per-lane
- * mask (see kernel/x86/dot_avx2.c's file header "KNOWN LIMITATION"
- * comment) and do not yet have it. A unit-stride call here would
- * silently test that known-broken path instead of the fix, on any
- * machine where AVX2 (or NEON) gets selected.
+ * Uses incx=2/incy=2 (NOT unit stride) to exercise every backend's
+ * general strided path (kernel/{generic,x86,arm}/dot_*.c), which is
+ * scalar regardless of backend.
  */
 static void test_overflow(void)
 {
@@ -503,6 +495,29 @@ static void test_overflow(void)
                            (BLAS_REAL)1e150, (BLAS_REAL)0.0 };
         check_is_pos_inf("dot_kahan (strided) with overflowing products is +Inf, not NaN",
                           blas_dot_kahan(3, x, 2, y, 2));
+    }
+
+    /*
+     * Same regression, unit stride, sized to actually land inside the
+     * vectorized main loop (n=16: one full AVX2 iteration of 4x4
+     * lanes, or two NEON iterations of 4x2 lanes) rather than just the
+     * scalar tail. This specifically exercises the per-lane
+     * overflow-to-NaN guard in kernel/x86/dot_avx2.c and
+     * kernel/arm/dot_neon.c's blas_dot_kahan_{avx2,neon}() unit-stride
+     * paths -- overflowing products are placed in different lanes
+     * (indices 0, 5, 10, 15) so multiple independent Kahan streams
+     * each take the overflow branch at different points.
+     */
+    {
+        enum { N = 16 };
+        BLAS_REAL x[N] = {0}, y[N] = {0};
+        blas_int overflow_idx[] = {0, 5, 10, 15};
+        for (size_t k = 0; k < sizeof(overflow_idx) / sizeof(overflow_idx[0]); k++) {
+            x[overflow_idx[k]] = (BLAS_REAL)1e200;
+            y[overflow_idx[k]] = (BLAS_REAL)1e150;
+        }
+        check_is_pos_inf("dot_kahan (unit-stride, n=16) with overflowing products is +Inf, not NaN",
+                          blas_dot_kahan(N, x, 1, y, 1));
     }
 }
 

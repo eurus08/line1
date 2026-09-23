@@ -131,15 +131,17 @@ Measured with `bench_mpi_dot` across MPI rank counts 1–12 on a 6-core/12-threa
 
 | ranks | strong: time (ms) | strong: speedup | weak: time (ms) | weak: efficiency |
 |---:|---:|---:|---:|---:|
-| 1 | 40.4 | 1.00× | 5.0 | 1.00 |
-| 2 | 33.3 | 1.21× | 8.3 | 0.60 |
-| 3 | 31.0 | 1.30× | 11.4 | 0.44 |
-| 4 | 29.8 | **1.36×** | 14.8 | 0.34 |
-| 6 | 30.9 | 1.31× | 23.2 | 0.22 |
-| 8 | 30.4 | 1.33× | 30.6 | 0.16 |
-| 12 | 36.0 | 1.12× | 48.8 | 0.10 |
+| 1 | 44.1 | 1.00× | 5.5 | 1.00 |
+| 2 | 35.1 | 1.26× | 8.8 | 0.62 |
+| 3 | 32.4 | 1.36× | 11.3 | 0.49 |
+| 4 | 32.6 | 1.35× | 14.6 | 0.38 |
+| 6 | 29.7 | **1.48×** | 24.0 | 0.23 |
+| 8 | 32.7 | 1.35× | 30.4 | 0.18 |
+| 12 | 34.4 | 1.28× | 54.7 | 0.10 |
 
-**This is the same memory-bandwidth story, now at the MPI layer.** `dot`'s local computation is essentially pure memory traffic with almost no arithmetic to hide it behind, so once a handful of ranks are pulling data from DRAM simultaneously, the memory bus — not the number of ranks — is the bottleneck. Strong-scaling speedup peaks at just 4 ranks (~1.36×) and never approaches linear; weak-scaling efficiency falls to ~10% by 12 ranks. Both are the expected signature of a memory-bandwidth-bound kernel on a CPU with a small number of memory channels relative to its core count, not a flaw in the MPI implementation — `blas_mpi_dot`'s correctness was verified independently (see `tests/mpi/`) before any of this scaling data was gathered.
+(raw data: `bench/mpi/results/scaling_results.csv`)
+
+**This is the same memory-bandwidth story, now at the MPI layer.** `dot`'s local computation is essentially pure memory traffic with almost no arithmetic to hide it behind, so once a handful of ranks are pulling data from DRAM simultaneously, the memory bus — not the number of ranks — is the bottleneck. Strong-scaling speedup peaks at 6 ranks (~1.48×) and never approaches linear; weak-scaling efficiency falls to ~10% by 12 ranks. Both are the expected signature of a memory-bandwidth-bound kernel on a CPU with a small number of memory channels relative to its core count, not a flaw in the MPI implementation — `blas_mpi_dot`'s correctness was verified independently (see `tests/mpi/`) before any of this scaling data was gathered.
 
 **A real gotcha worth documenting**, since it silently produced wrong data before being caught: OpenMPI's default rank-to-core mapping packs both SMT/hyperthread siblings of a core before moving to the next core, rather than spreading ranks across distinct physical cores first. On a 6-core/12-thread CPU, an unqualified 8-rank run can end up using only 4 of the 6 physical cores while 2 sit idle — with no error or warning. Verified by hand with `mpirun --report-bindings`; the fix is `--map-by core --bind-to hwthread` alongside `--use-hwthread-cpus`, which forces breadth-first placement across distinct cores before ever doubling up on SMT threads. See `bench/mpi/run_scaling.sh` for the full explanation and the exact flags used.
 
