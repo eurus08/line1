@@ -30,3 +30,6 @@ docs/
 .idea/
 *.swp
 *~
+
+# Python environments
+.venv/
